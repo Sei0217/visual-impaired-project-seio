@@ -141,7 +141,7 @@ async def detect(image: UploadFile = File(...)):
 LANG_MAP = {
     "en":  "en",
     "tl":  "tl",
-    "ceb": "en",  # fallback
+    "ceb": "tl",  # fallback
 }
 
 @app.get("/api/tts")
