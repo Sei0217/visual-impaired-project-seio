@@ -194,12 +194,25 @@ function getCurrentLanguageSafe() {
 
 // Cebuano per-label audio (person/door/stairs). Returns true if it played.
 async function speakCebuanoDetection(dets) {
+  console.log('speakCebuanoDetection called with:', dets);
+  
   const lang = getCurrentLanguageSafe();
-  if (lang !== 'ceb') return false;
-  if (!dets?.length) return false;
+  console.log('Current language:', lang);
+  if (lang !== 'ceb') {
+    console.log('Not Cebuano, returning false');
+    return false;
+  }
+  
+  if (!dets?.length) {
+    console.log('No detections, returning false');
+    return false;
+  }
   
   const top = [...dets].sort((a,b) => (b.conf||0) - (a.conf||0))[0];
+  console.log('Top detection:', top);
+  
   const key = String(top.label || '').toLowerCase();
+  console.log('Detection label key:', key);
   
   const clipMap = {
     person: './audio/person.mp3',
@@ -208,11 +221,8 @@ async function speakCebuanoDetection(dets) {
     none:   './audio/none.mp3'
   };
   
-  // Use the matched clip, or default to 'none.mp3' for unrecognized labels
   const src = clipMap[key] || clipMap.none;
-  
-  console.log('Detection label:', key);
-  console.log('Selected audio:', src);
+  console.log('Selected audio source:', src);
   
   let a = document.getElementById('ttsAudio');
   if (!a) {
@@ -228,22 +238,15 @@ async function speakCebuanoDetection(dets) {
     a.pause();
     a.currentTime = 0;
     a.src = src;
+    console.log('About to play audio...');
     await a.play();
-    return true;  // Always return true for Cebuano language
+    console.log('Audio played successfully');
+    return true;
   } catch (e) {
     console.warn('Cebuano clip play failed:', e);
     return false;
   }
 }
-
-// (optional) tiny preloader for the three clips so first play is snappy
-(function preloadCebuanoSimple(){
-  ['./audio/person.mp3','./audio/door.mp3','./audio/stairs.mp3', './audio/none.mp3'].forEach(p => {
-    const a = new Audio();
-    a.preload = 'auto';
-    a.src = p;
-  });
-})();
 
 
 
