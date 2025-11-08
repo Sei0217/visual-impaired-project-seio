@@ -203,15 +203,14 @@ async function speakCebuanoDetection(dets) {
     return false;
   }
   
-  if (!dets?.length) {
-    console.log('No detections, returning false');
-    return false;
+  let key = 'none'; 
+  
+  if (dets?.length) {
+    const top = [...dets].sort((a,b) => (b.conf||0) - (a.conf||0))[0];
+    console.log('Top detection:', top);
+    key = String(top.label || '').toLowerCase();
   }
   
-  const top = [...dets].sort((a,b) => (b.conf||0) - (a.conf||0))[0];
-  console.log('Top detection:', top);
-  
-  const key = String(top.label || '').toLowerCase();
   console.log('Detection label key:', key);
   
   const clipMap = {
@@ -241,7 +240,7 @@ async function speakCebuanoDetection(dets) {
     console.log('About to play audio...');
     await a.play();
     console.log('Audio played successfully');
-    return true;
+    return true;  
   } catch (e) {
     console.warn('Cebuano clip play failed:', e);
     return false;
