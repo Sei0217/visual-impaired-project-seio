@@ -202,9 +202,9 @@ async function speakCebuanoDetection(dets) {
   const key = String(top.label || '').toLowerCase();
 
   const clipMap = {
-    person: '/audio/person.m4a',
-    door:   '/audio/door.m4a',
-    stairs: '/audio/stairs.m4a'
+    person: '/audio/person.mp3',
+    door:   '/audio/door.mp3',
+    stairs: '/audio/stairs.mp3'
   };
   const src = clipMap[key];
   if (!src) return false;
