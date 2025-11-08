@@ -194,9 +194,6 @@ function getCurrentLanguageSafe() {
 
 // Cebuano per-label audio (person/door/stairs). Returns true if it played.
 async function speakCebuanoDetection(dets) {
-console.log('Detection label:', key);
-console.log('Selected audio:', src);
-
   const lang = getCurrentLanguageSafe();
   if (lang !== 'ceb') return false;
   if (!dets?.length) return false;
@@ -213,6 +210,9 @@ console.log('Selected audio:', src);
   
   // Use the matched clip, or default to 'none.mp3' for unrecognized labels
   const src = clipMap[key] || clipMap.none;
+  
+  console.log('Detection label:', key);
+  console.log('Selected audio:', src);
   
   let a = document.getElementById('ttsAudio');
   if (!a) {
