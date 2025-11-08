@@ -202,9 +202,9 @@ async function speakCebuanoDetection(dets) {
   const key = String(top.label || '').toLowerCase();
 
   const clipMap = {
-    person: '/public/audio/person.mp3',
-    door:   '/public/audio/door.mp3',
-    stairs: '/public/audio/stairs.mp3'
+    person: './public/audio/person.mp3',
+    door:   './public/audio/door.mp3',
+    stairs: './public/audio/stairs.mp3'
   };
   const src = clipMap[key];
   if (!src) return false;
@@ -234,7 +234,7 @@ async function speakCebuanoDetection(dets) {
 
 // (optional) tiny preloader for the three clips so first play is snappy
 (function preloadCebuanoSimple(){
-  ['/public/audio/person.mp3','/public/audio/door.mp3','/public/audio/stairs.mp3'].forEach(p => {
+  ['./public/audio/person.mp3','./public/audio/door.mp3','./public/audio/stairs.mp3'].forEach(p => {
     const a = new Audio();
     a.preload = 'auto';
     a.src = p;
