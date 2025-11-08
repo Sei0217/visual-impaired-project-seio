@@ -234,7 +234,7 @@ async function speakCebuanoDetection(dets) {
 
 // (optional) tiny preloader for the three clips so first play is snappy
 (function preloadCebuanoSimple(){
-  ['/audio/person.m4a','/audio/door.m4a','/audio/stairs.m4a'].forEach(p => {
+  ['/audio/person.mp3','/audio/door.mp3','/audio/stairs.mp3'].forEach(p => {
     const a = new Audio();
     a.preload = 'auto';
     a.src = p;
