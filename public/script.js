@@ -376,6 +376,9 @@ async function startCamera() {
   // Stop any existing stream first
   stopCamera();
   
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  const facingMode = isMobile ? "environment" : "user";
   // Clear previous results
   if (resultImg) {
     resultImg.style.display = 'none';
@@ -391,8 +394,9 @@ async function startCamera() {
   if (imageEl) imageEl.style.display = 'none';
   
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    activeStream = stream;
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: facingMode }
+    });
     console.log('✅ Camera stream obtained');
     if (videoEl) {
       videoEl.srcObject = stream;
