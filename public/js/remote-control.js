@@ -1,26 +1,41 @@
+// === Device detection ===
 
-// 🔹 2) Check if Android
-const ua = navigator.userAgent || window.opera;
-const isAndroid = /Android/i.test(ua);
+// 1) Optional: check query param ?device=...
+const params = new URLSearchParams(window.location.search);
+let deviceId = params.get("device"); // e.g. ?device=vision-device-1
 
-// 🔹 3) Only treat this as a "device" if BOTH are true
-const isDeviceMode =  isAndroid;
+// 2) If no ?device=..., try to detect Android WebView (yung app)
+if (!deviceId) {
+  const ua = navigator.userAgent || navigator.vendor || window.opera || "";
+  const isAndroid = /Android/i.test(ua);
 
-if (!isDeviceMode) {
-  console.log("[remote-device] Not in Android device mode, skipping Socket.IO setup");
-  // Normal website visitor / non-Android → walang remote control
+  // Very rough Android WebView detection:
+  // - may "wv" (WebView) sa UA, or
+  // - may "Version/x.x" pero hindi yung full Chrome browser
+  const isWebView =
+    /\bwv\b/i.test(ua) ||
+    (/\bVersion\/\d+\.\d+\b/i.test(ua) && !/Chrome\/\d+/i.test(ua));
+
+  if (isAndroid && isWebView) {
+    deviceId = "vision-device-1"; // 👉 fixed ID para sa Android app
+  }
+}
+
+if (!deviceId) {
+  console.log(
+    "[remote-device] Not in device mode (no ?device=... and not Android WebView) → skipping Socket.IO setup"
+  );
+  // Normal visitor lang ’to (desktop / mobile browser) – walang remote control
 } else {
-  console.log("[remote-device] Android device mode detected, setting up remote control");
+  console.log("[remote-device] Device mode detected with deviceId:", deviceId);
 
-  // 🔹 Unique ID for this Android device
-  const deviceId = "vision-device-1"; // ito yung gusto mo
+  // === Socket.IO setup ===
 
-  // 🔹 Connect to SAME origin (localhost / Render / etc.)
   const socket = io({
     transports: ["websocket"],
   });
 
-  // optional expose to window
+  // expose for other scripts (preview, etc.)
   window.remoteSocket = socket;
   window.remoteDeviceId = deviceId;
 
