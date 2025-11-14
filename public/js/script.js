@@ -7,29 +7,25 @@
   // ========================================
   const ROBOFLOW_CONFIG = {
     apiKey: 'MvAPSE6lMWD1bxEBRpJZ',
-    workspaceId: 'objdetection-dtu2z',
-    modelId: 'trial-sjo4y',  // CORRECTED: was trial-sjo4y-instant-1
+    modelId: 'trial-sjo4y',
     version: '1',
-    confidenceThreshold: 40, // 40% minimum confidence
-    overlapThreshold: 30,
-    maxObjects: 20,
-    fps: 4, // Detection frames per second
-    apiBase: 'https://detect.roboflow.com' // Hosted API base
+    confidenceThreshold: 40,
+    fps: 4,
+    apiBase: 'https://detect.roboflow.com'
   };
 
   // ========================================
   // COLOR CONFIGURATION
   // ========================================
   const OBJECT_COLORS = {
-    'people': '#FF0000',      // Red
-    'person': '#FF0000',      // Red (alternative label)
-    'stairs': '#FFA500',      // Orange
-    'stair': '#FFA500',       // Orange (alternative label)
-    'door': '#00FF00',        // Green
-    'default': '#00FFFF'      // Cyan for any other objects
+    'people': '#FF0000',
+    'person': '#FF0000',
+    'stairs': '#FFA500',
+    'stair': '#FFA500',
+    'door': '#00FF00',
+    'default': '#00FFFF'
   };
 
-  // Priority for announcements (higher = more important)
   const OBJECT_PRIORITY = {
     'stairs': 3,
     'stair': 3,
@@ -44,7 +40,6 @@
   const videoPreview = document.getElementById('videoPreview');
   const previewContainer = document.querySelector('.image-preview-container');
   
-  // Create canvas for drawing bounding boxes
   const canvas = document.createElement('canvas');
   canvas.style.position = 'absolute';
   canvas.style.top = '0';
@@ -60,17 +55,13 @@
   let lastDetectedObjects = new Set();
 
   // ========================================
-  // INITIALIZE ROBOFLOW (API-based, no SDK loading needed)
+  // INITIALIZE ROBOFLOW
   // ========================================
   async function initializeRoboflow() {
     try {
-      console.log('Roboflow Serverless API ready');
-      console.log(`Endpoint: https://detect.roboflow.com/${ROBOFLOW_CONFIG.modelId}/${ROBOFLOW_CONFIG.version}`);
-
-      
-      // For API-based detection, no initialization needed
+      console.log('Roboflow API ready');
+      console.log(`Endpoint: ${ROBOFLOW_CONFIG.apiBase}/${ROBOFLOW_CONFIG.modelId}/${ROBOFLOW_CONFIG.version}`);
       model = { ready: true };
-      
       return true;
     } catch (error) {
       console.error('Error initializing Roboflow:', error);
@@ -87,7 +78,6 @@
       previewContainer.appendChild(canvas);
     }
 
-    // Match canvas size to video
     const rect = videoPreview.getBoundingClientRect();
     canvas.width = videoPreview.videoWidth || rect.width;
     canvas.height = videoPreview.videoHeight || rect.height;
@@ -103,7 +93,6 @@
   async function startDetection() {
     if (isDetecting) return;
 
-    // Initialize Roboflow if needed
     if (!model || !model.ready) {
       const initialized = await initializeRoboflow();
       if (!initialized) {
@@ -115,7 +104,6 @@
     isDetecting = true;
     setupCanvas();
 
-    // Run detection at specified FPS
     const detectionDelay = 1000 / ROBOFLOW_CONFIG.fps;
     
     const runDetection = async () => {
@@ -129,7 +117,6 @@
         console.error('Detection error:', error);
       }
 
-      // Schedule next detection
       detectionInterval = setTimeout(runDetection, detectionDelay);
     };
 
@@ -147,7 +134,6 @@
       detectionInterval = null;
     }
     
-    // Clear canvas
     if (ctx) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
@@ -157,98 +143,67 @@
   }
 
   // ========================================
-  // DETECT OBJECTS 
+  // DETECT OBJECTS
   // ========================================
-async function detectObjects() {
-  if (!videoPreview || !videoPreview.videoWidth) {
-    return;
-  }
-
-  try {
-    // 1) Get base64 data URL from current frame
-    const dataUrl = captureVideoFrameAsDataURL();
-    if (!dataUrl) return;
-
-    // 2) Hosted API endpoint
-    const apiUrl = `${ROBOFLOW_CONFIG.apiBase}/${ROBOFLOW_CONFIG.modelId}/${ROBOFLOW_CONFIG.version}`;
-    
-    // Send the base64 string as the body (no JSON wrapper), like the cURL example
-    const response = await fetch(`${apiUrl}?api_key=${ROBOFLOW_CONFIG.apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: dataUrl   // "data:image/jpeg;base64,...."
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API Error:', response.status, errorText);
-      throw new Error(`API request failed: ${response.status}`);
+  async function detectObjects() {
+    if (!videoPreview || !videoPreview.videoWidth) {
+      return;
     }
 
-    const data = await response.json();
-    console.log('Roboflow raw response:', data);
+    try {
+      const dataUrl = captureVideoFrameAsDataURL();
+      if (!dataUrl) return;
 
-    const predictions = Array.isArray(data?.predictions) ? data.predictions : [];
-    console.log('Predictions count:', predictions.length);
+      const apiUrl = `${ROBOFLOW_CONFIG.apiBase}/${ROBOFLOW_CONFIG.modelId}/${ROBOFLOW_CONFIG.version}`;
+      
+      const response = await fetch(`${apiUrl}?api_key=${ROBOFLOW_CONFIG.apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: dataUrl
+      });
 
-    const filteredPredictions = predictions.filter(
-      p => (p.confidence * 100) >= ROBOFLOW_CONFIG.confidenceThreshold
-    );
-    console.log('Filtered predictions count:', filteredPredictions.length);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error:', response.status, errorText);
+        throw new Error(`API request failed: ${response.status}`);
+      }
 
-    drawDetections(filteredPredictions);
-    announceDetections(filteredPredictions);
+      const data = await response.json();
 
-  } catch (error) {
-    console.error('Error during detection:', error);
+      const predictions = Array.isArray(data?.predictions) ? data.predictions : [];
+
+      const filteredPredictions = predictions.filter(
+        p => (p.confidence * 100) >= ROBOFLOW_CONFIG.confidenceThreshold
+      );
+
+      drawDetections(filteredPredictions);
+      announceDetections(filteredPredictions);
+
+    } catch (error) {
+      console.error('Error during detection:', error);
+    }
   }
-}
 
+  // ========================================
+  // CAPTURE VIDEO FRAME
+  // ========================================
+  function captureVideoFrameAsDataURL() {
+    try {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = videoPreview.videoWidth;
+      tempCanvas.height = videoPreview.videoHeight;
 
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.drawImage(videoPreview, 0, 0);
 
-
-// Capture current video frame as base64 (no data:image/jpeg prefix)
-async function captureVideoFrameAsBase64() {
-  try {
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = videoPreview.videoWidth;
-    tempCanvas.height = videoPreview.videoHeight;
-
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.drawImage(videoPreview, 0, 0);
-
-    // dataURL looks like "data:image/jpeg;base64,AAAA..."
-    const dataUrl = tempCanvas.toDataURL('image/jpeg', 0.8);
-    const parts = dataUrl.split(',');
-
-    // Return only the base64 part (what detect.roboflow.com expects)
-    return parts[1] || null;
-  } catch (err) {
-    console.error('Error capturing frame as base64:', err);
-    return null;
+      return tempCanvas.toDataURL('image/jpeg', 0.8);
+    } catch (error) {
+      console.error('Error capturing frame:', error);
+      return null;
+    }
   }
-}
-
-function captureVideoFrameAsDataURL() {
-  try {
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = videoPreview.videoWidth;
-    tempCanvas.height = videoPreview.videoHeight;
-
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.drawImage(videoPreview, 0, 0);
-
-    // This gives: "data:image/jpeg;base64,...."
-    return tempCanvas.toDataURL('image/jpeg', 0.8);
-  } catch (error) {
-    console.error('Error capturing frame:', error);
-    return null;
-  }
-}
-
-
 
   // ========================================
   // DRAW DETECTIONS
@@ -256,14 +211,12 @@ function captureVideoFrameAsDataURL() {
   function drawDetections(predictions) {
     if (!ctx) return;
 
-    // Clear previous drawings
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (!predictions || predictions.length === 0) {
       return;
     }
 
-    // Calculate scale factors
     const scaleX = canvas.width / videoPreview.videoWidth;
     const scaleY = canvas.height / videoPreview.videoHeight;
 
@@ -271,21 +224,17 @@ function captureVideoFrameAsDataURL() {
       const label = prediction.class.toLowerCase();
       const confidence = Math.round(prediction.confidence * 100);
       
-      // Get color for this object type
       const color = OBJECT_COLORS[label] || OBJECT_COLORS['default'];
 
-      // Calculate box coordinates (Roboflow provides center x,y and width,height)
       const x = (prediction.x - prediction.width / 2) * scaleX;
       const y = (prediction.y - prediction.height / 2) * scaleY;
       const width = prediction.width * scaleX;
       const height = prediction.height * scaleY;
 
-      // Draw bounding box
       ctx.strokeStyle = color;
       ctx.lineWidth = 3;
       ctx.strokeRect(x, y, width, height);
 
-      // Draw label background
       const labelText = `${prediction.class} ${confidence}%`;
       ctx.font = 'bold 16px Arial';
       const textMetrics = ctx.measureText(labelText);
@@ -300,19 +249,112 @@ function captureVideoFrameAsDataURL() {
         textHeight + padding
       );
 
-      // Draw label text
       ctx.fillStyle = '#000000';
       ctx.fillText(labelText, x + padding, y - padding - 2);
 
-      // Add visual alert for stairs (safety priority)
       if (label.includes('stair')) {
         flashBorder(color);
       }
     });
   }
 
+    // ========================================
+  // AUDIO PROMPTS (USING /public/audio FOLDER)
   // ========================================
-  // ANNOUNCE DETECTIONS (TEXT-TO-SPEECH)
+
+  const AUDIO_PROMPTS = {
+    // stairs / hagdan
+    stairsWarning: {
+      en: '/audio/en/stairs.mp3',
+      ta: '/audio/ta/hagdan.mp3',
+      ce: '/audio/ce/stairs(ceb).mp3'
+    },
+
+    // person / tao
+    personSingle: {
+      en: '/audio/en/person.mp3',
+      ta: '/audio/ta/tao.mp3',
+      ce: '/audio/ce/person(ceb).mp3'
+    },
+    personMultiple: {
+      en: '/audio/en/person.mp3',
+      ta: '/audio/ta/tao.mp3',
+      ce: '/audio/ce/person(ceb).mp3'
+    },
+
+    // door / pinto
+    doorSingle: {
+      en: '/audio/en/door.mp3',
+      ta: '/audio/ta/pinto.mp3',
+      ce: '/audio/ce/door(ceb).mp3'
+    },
+    doorMultiple: {
+      en: '/audio/en/door.mp3',
+      ta: '/audio/ta/pinto.mp3',
+      ce: '/audio/ce/door(ceb).mp3'
+    },
+
+    // fallback for unknown objects – reuse "person" voice
+    generic: {
+      en: '/audio/en/person.mp3',
+      ta: '/audio/ta/tao.mp3',
+      ce: '/audio/ce/person(ceb).mp3'
+    }
+  };
+
+  function getCurrentLanguageCode() {
+    let lang =
+      window.currentLanguage ||
+      window.appLanguage ||
+      document.documentElement.lang ||
+      'en';
+
+    lang = String(lang).toLowerCase();
+
+    // Tagalog
+    if (lang === 'ta' || lang.startsWith('tl') || lang === 'tagalog' || lang.startsWith('fil')) {
+      return 'ta';
+    }
+
+    // Cebuano
+    if (lang === 'ce' || lang.startsWith('ceb') || lang === 'cebuano') {
+      return 'ce';
+    }
+
+    // Default English
+    return 'en';
+  }
+
+  // Reusable audio element
+  const announcementAudio = new Audio();
+
+  function playAudioPrompt(key) {
+    const byLang = AUDIO_PROMPTS[key];
+    if (!byLang) {
+      console.warn('No audio prompt for key:', key);
+      return;
+    }
+
+    const lang = getCurrentLanguageCode();
+    const src = byLang[lang] || byLang.en;
+    if (!src) {
+      console.warn('No audio file for key/lang:', key, lang);
+      return;
+    }
+
+    announcementAudio.src = src;
+    announcementAudio.currentTime = 0;
+
+    announcementAudio.play().catch(err => {
+      console.log('Audio play blocked or failed:', err);
+    });
+  }
+
+  // ========================================
+  // ANNOUNCE DETECTIONS
+  // ========================================
+    // ========================================
+  // ANNOUNCE DETECTIONS
   // ========================================
   function announceDetections(predictions) {
     if (!predictions || predictions.length === 0) {
@@ -320,34 +362,29 @@ function captureVideoFrameAsDataURL() {
       return;
     }
 
-    // Don't announce too frequently (every 3 seconds)
     const now = Date.now();
     if (now - lastAnnouncement < 3000) {
       return;
     }
 
-    // Get unique object types
     const currentObjects = new Set(
       predictions.map(p => p.class.toLowerCase())
     );
 
-    // Check if there are new objects to announce
     const hasNewObjects = Array.from(currentObjects).some(
       obj => !lastDetectedObjects.has(obj)
     );
 
     if (!hasNewObjects && lastDetectedObjects.size > 0) {
-      return; // Don't re-announce same objects
+      return;
     }
 
-    // Sort by priority
     const sortedObjects = Array.from(currentObjects).sort((a, b) => {
       const priorityA = OBJECT_PRIORITY[a] || 0;
       const priorityB = OBJECT_PRIORITY[b] || 0;
       return priorityB - priorityA;
     });
 
-    // Announce highest priority object
     if (sortedObjects.length > 0) {
       const objectToAnnounce = sortedObjects[0];
       const count = predictions.filter(
@@ -355,18 +392,45 @@ function captureVideoFrameAsDataURL() {
       ).length;
 
       let message = '';
+      let audioKey = 'generic';
+
       if (objectToAnnounce.includes('stair')) {
-        message = 'Warning! Stairs ahead';
-        vibratePhone([200, 100, 200]); // Alert vibration for stairs
+        message = window.t ? window.t('stairsWarning') : 'Warning! Stairs ahead';
+        audioKey = 'stairsWarning';
+        vibratePhone([200, 100, 200]);
       } else if (objectToAnnounce.includes('people') || objectToAnnounce.includes('person')) {
-        message = count > 1 ? `${count} people detected` : 'Person detected';
+        if (count > 1) {
+          message = window.t ? `${count} ${window.t('peopleDetected')}` : `${count} people detected`;
+          audioKey = 'personMultiple';
+        } else {
+          message = window.t ? window.t('personDetected') : 'Person detected';
+          audioKey = 'personSingle';
+        }
       } else if (objectToAnnounce.includes('door')) {
-        message = count > 1 ? `${count} doors detected` : 'Door ahead';
+        if (count > 1) {
+          message = window.t ? `${count} ${window.t('doorsDetected')}` : `${count} doors detected`;
+          audioKey = 'doorMultiple';
+        } else {
+          message = window.t ? window.t('doorAhead') : 'Door ahead';
+          audioKey = 'doorSingle';
+        }
       } else {
-        message = `${objectToAnnounce} detected`;
+        message = window.t
+          ? `${objectToAnnounce} ${window.t('objectDetected')}`
+          : `${objectToAnnounce} detected`;
+        audioKey = 'generic';
       }
 
-      speak(message);
+      // 🔊 Use MP3 audio (works in WebView / mobile)
+      playAudioPrompt(audioKey);
+
+      // Optional: keep speechSynthesis for desktop browsers only
+      if ('speechSynthesis' in window) {
+        speak(message);
+      }
+
+      console.log('Announcement:', message);
+
       lastAnnouncement = now;
       lastDetectedObjects = currentObjects;
     }
@@ -375,26 +439,91 @@ function captureVideoFrameAsDataURL() {
   // ========================================
   // TEXT-TO-SPEECH
   // ========================================
-  function speak(text) {
-    if ('speechSynthesis' in window) {
-      // Cancel any ongoing speech
-      window.speechSynthesis.cancel();
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-      utterance.lang = 'en-US';
+  // Helper: detect current UI language
+  function getCurrentLanguageCode() {
+    // Try a few common globals your app might set
+    let lang =
+      window.currentLanguage ||
+      window.appLanguage ||
+      window.currentLang ||
+      document.documentElement.lang ||
+      'en';
 
-      window.speechSynthesis.speak(utterance);
-      console.log('Announced:', text);
-    } else {
-      console.log('Text-to-speech not supported:', text);
+    lang = String(lang).toLowerCase();
+
+    if (lang.startsWith('tl') || lang.startsWith('fil') || lang === 'tagalog') {
+      return 'tl'; // Tagalog / Filipino
     }
+    if (lang.startsWith('ceb') || lang === 'cebuano') {
+      return 'ceb'; // Cebuano
+    }
+    return 'en';
   }
 
+  // Helper: pick an appropriate voice for the language
+  function pickVoiceForLanguage(langCode) {
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices || !voices.length) return null;
+
+    const prefsByLang = {
+      en: ['en-PH', 'en-US', 'en-GB'],
+      tl: ['fil-PH', 'tl-PH', 'en-PH'],
+      ceb: ['ceb', 'fil-PH', 'tl-PH', 'en-PH']
+    };
+
+    const prefs = prefsByLang[langCode] || prefsByLang.en;
+
+    for (const pref of prefs) {
+      const v = voices.find(voice =>
+        voice.lang.toLowerCase().startsWith(pref.toLowerCase())
+      );
+      if (v) return v;
+    }
+    return null;
+  }
+
+  function speak(text) {
+    if (!('speechSynthesis' in window)) {
+      console.log('Text-to-speech not supported:', text);
+      return;
+    }
+
+    const langCode = getCurrentLanguageCode();
+
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+
+    // Basic rate/pitch/volume
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+
+    // Choose language code for the utterance
+    if (langCode === 'tl') {
+      utterance.lang = 'fil-PH'; // Tagalog / Filipino
+    } else if (langCode === 'ceb') {
+      // Many browsers don't have a Cebuano voice; use Filipino if not available
+      utterance.lang = 'fil-PH';
+    } else {
+      utterance.lang = 'en-US';
+    }
+
+    // Try to pick an actual matching voice
+    const voice = pickVoiceForLanguage(langCode);
+    if (voice) {
+      utterance.voice = voice;
+    }
+
+    window.speechSynthesis.speak(utterance);
+    console.log(`Announced [${utterance.lang}]:`, text);
+  }
+
+
   // ========================================
-  // VIBRATION (MOBILE)
+  // VIBRATION
   // ========================================
   function vibratePhone(pattern) {
     if ('vibrate' in navigator) {
@@ -403,11 +532,11 @@ function captureVideoFrameAsDataURL() {
   }
 
   // ========================================
-  // VISUAL ALERT (FLASH BORDER)
+  // VISUAL ALERT
   // ========================================
   let flashTimeout = null;
   function flashBorder(color) {
-    if (flashTimeout) return; // Don't flash if already flashing
+    if (flashTimeout) return;
 
     previewContainer.style.border = `4px solid ${color}`;
     previewContainer.style.boxShadow = `0 0 20px ${color}`;
@@ -435,12 +564,11 @@ function captureVideoFrameAsDataURL() {
   // EVENT LISTENERS
   // ========================================
   
-  // Listen for camera start/stop from camera.js
   document.addEventListener('cameraStarted', () => {
     console.log('Camera started, beginning detection...');
     setTimeout(() => {
       startDetection();
-    }, 1000); // Wait 1 second for camera to fully initialize
+    }, 1000);
   });
 
   document.addEventListener('cameraStopped', () => {
@@ -448,12 +576,10 @@ function captureVideoFrameAsDataURL() {
     stopDetection();
   });
 
-  // Handle video loaded
   videoPreview.addEventListener('loadedmetadata', () => {
     setupCanvas();
   });
 
-  // Handle window resize
   let resizeTimeout;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimeout);
@@ -464,7 +590,6 @@ function captureVideoFrameAsDataURL() {
     }, 250);
   });
 
-  // Clean up on page unload
   window.addEventListener('beforeunload', () => {
     stopDetection();
   });
@@ -474,12 +599,13 @@ function captureVideoFrameAsDataURL() {
   // ========================================
   window.addEventListener('DOMContentLoaded', () => {
     console.log('Object Detection System Ready');
-    console.log('Using Roboflow Serverless API');
+    console.log('Using Roboflow Hosted API');
     console.log('Project: objdetection-dtu2z/trial-sjo4y/1');
+    console.log('Languages: English (EN), Tagalog (TL), Cebuano (CEB)');
   });
 
   // ========================================
-  // EXPOSE FUNCTIONS (if needed)
+  // EXPOSE FUNCTIONS
   // ========================================
   window.objectDetection = {
     start: startDetection,

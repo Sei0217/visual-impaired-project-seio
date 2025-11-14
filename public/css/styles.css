@@ -710,3 +710,71 @@ footer p {
 .detect-box {
   animation: fadeIn 0.6s ease-out;
 }
+
+
+/* langyage changer */
+    .language-switcher {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    .lang-btn {
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      min-width: 50px;
+    }
+    
+    .lang-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 122, 0, 0.5);
+      transform: translateY(-2px);
+    }
+    
+    .lang-btn.active {
+      background: #FF7A00;
+      border-color: #FF7A00;
+      box-shadow: 0 0 15px rgba(255, 122, 0, 0.5);
+    }
+    
+    .lang-btn:focus {
+      outline: 2px solid #FF7A00;
+      outline-offset: 2px;
+    }
+    
+    /* Mobile adjustments */
+    @media (max-width: 768px) {
+      .language-switcher {
+        top: 60px;
+        right: 10px;
+        padding: 6px;
+        gap: 4px;
+      }
+      
+      .lang-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+        min-width: 40px;
+      }
+    }
+    
+    /* Accessibility */
+    .lang-btn:focus-visible {
+      outline: 3px solid #FF7A00;
+      outline-offset: 3px;
+    }
