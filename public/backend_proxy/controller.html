@@ -20,8 +20,29 @@
     <button id="startCamBtn">Start Camera</button>
     <button id="stopCamBtn">Stop Camera</button>
 
+    <h2>Live Preview (slow)</h2>
+    <button id="startPreviewBtn">Start Preview</button>
+    <button id="stopPreviewBtn">Stop Preview</button>
+    <div style="margin-top:8px;">
+      <img
+        id="previewImage"
+        alt="Camera preview"
+        style="max-width: 100%; border: 1px solid #ccc;"
+      />
+    </div>
+
     <hr />
-    <pre id="log" style="background:#111;color:#0f0;padding:8px;height:150px;overflow:auto;font-size:12px;"></pre>
+    <pre
+      id="log"
+      style="
+        background: #111;
+        color: #0f0;
+        padding: 8px;
+        height: 150px;
+        overflow: auto;
+        font-size: 12px;
+      "
+    ></pre>
 
     <script>
       const targetDeviceId = "vision-device-1";
@@ -29,7 +50,10 @@
       const logEl = document.getElementById("log");
       function log(...args) {
         console.log(...args);
-        logEl.textContent += args.map(a => (typeof a === "string" ? a : JSON.stringify(a))).join(" ") + "\n";
+        logEl.textContent +=
+          args
+            .map((a) => (typeof a === "string" ? a : JSON.stringify(a)))
+            .join(" ") + "\n";
         logEl.scrollTop = logEl.scrollHeight;
       }
 
@@ -41,37 +65,55 @@
         log("[controller] connected:", socket.id);
       });
 
-      // Helper to send commands
       function sendCommand(type, payload = {}) {
         const msg = {
           deviceId: targetDeviceId,
-          command: {
-            type,
-            payload,
-          },
+          command: { type, payload },
         };
         socket.emit("sendCommand", msg);
         log("[controller] sendCommand:", msg);
       }
 
       // Language control
-      document.getElementById("applyLangBtn").addEventListener("click", () => {
-        const lang = document.getElementById("lang").value;
-        sendCommand("SET_LANGUAGE", { lang });
-      });
+      document
+        .getElementById("applyLangBtn")
+        .addEventListener("click", () => {
+          const lang = document.getElementById("lang").value;
+          sendCommand("SET_LANGUAGE", { lang });
+        });
 
       // Camera control
-      document.getElementById("startCamBtn").addEventListener("click", () => {
-        sendCommand("START_CAMERA");
-      });
+      document
+        .getElementById("startCamBtn")
+        .addEventListener("click", () => {
+          sendCommand("START_CAMERA");
+        });
 
-      document.getElementById("stopCamBtn").addEventListener("click", () => {
-        sendCommand("STOP_CAMERA");
-      });
+      document
+        .getElementById("stopCamBtn")
+        .addEventListener("click", () => {
+          sendCommand("STOP_CAMERA");
+        });
 
-      // (optional) Just log any command echo back if you add that later
-      socket.on("command", (cmd) => {
-        log("[controller] command event:", cmd);
+      // Preview control
+      document
+        .getElementById("startPreviewBtn")
+        .addEventListener("click", () => {
+          sendCommand("START_PREVIEW");
+        });
+
+      document
+        .getElementById("stopPreviewBtn")
+        .addEventListener("click", () => {
+          sendCommand("STOP_PREVIEW");
+        });
+
+      // Receive preview frames
+      socket.on("previewFrame", (data) => {
+        if (!data || data.deviceId !== targetDeviceId) return;
+        const img = document.getElementById("previewImage");
+        img.src = data.image;
+        log("[controller] previewFrame received");
       });
     </script>
   </body>

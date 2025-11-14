@@ -39,32 +39,39 @@ if (
   console.log("✅ HTTP enabled for production");
 }
 
-// 🔹 Socket.IO setup
+// 🔹 Socket.IO setup (dito lang tayo magdadagdag)
 const io = new SocketIOServer(server, {
-  cors: { origin: "*" },
+  cors: {
+    origin: "*", // pwede mong i-restrict later kung gusto mo
+  },
 });
 
 io.on("connection", (socket) => {
   console.log("🔌 Socket connected:", socket.id);
 
+  // Phone registers itself
   socket.on("registerDevice", ({ deviceId }) => {
     if (!deviceId) return;
     console.log("📱 Device registered:", deviceId);
     socket.join(`device:${deviceId}`);
   });
 
+  // Controller sends a command to device
   socket.on("sendCommand", ({ deviceId, command }) => {
     if (!deviceId || !command) return;
     console.log("📨 Command to", deviceId, command);
     io.to(`device:${deviceId}`).emit("command", command);
   });
 
-  // 🔹 Realtime preview: phone → controller(s)
+    // 🔹 Preview frames from device → broadcast to others (controllers)
   socket.on("previewFrame", (data) => {
-    // { deviceId, image }
-    // ipadala sa ibang kliyente (hindi na sa sender)
-    socket.broadcast.emit("previewFrame", data);
+    const { deviceId, image } = data || {};
+    if (!deviceId || !image) return;
+
+    // ipadala sa lahat maliban sa sender (usually controllers)
+    socket.broadcast.emit("previewFrame", { deviceId, image });
   });
+
 
   socket.on("disconnect", () => {
     console.log("❌ Socket disconnected:", socket.id);
