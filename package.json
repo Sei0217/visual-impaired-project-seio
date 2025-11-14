@@ -2,10 +2,11 @@
   "name": "express-web-app",
   "version": "1.0.0",
   "private": true,
-  "main": "server.cjs",
+  "main": "server.mjs",
+
   "scripts": {
-    "start": "node server.cjs",
-    "dev": "nodemon --ext js,mjs,cjs,json server.cjs"
+    "start": "node server.mjs",
+    "dev": "nodemon --ext js,mjs,cjs,json server.mjs"
   },
   "engines": {
     "node": "18.x"
