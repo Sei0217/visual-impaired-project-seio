@@ -179,4 +179,24 @@
     useCameraBtn.style.cursor = 'not-allowed';
   }
 
+    // --- Remote camera control API (for Socket.IO) ---
+  if (typeof window !== 'undefined') {
+    window.remoteCamera = {
+      start() {
+        // huwag paulit-ulit kung naka-on na
+        if (!isCameraActive) {
+          startCamera();
+        }
+      },
+      stop() {
+        if (isCameraActive) {
+          stopCamera();
+        }
+      },
+      isActive() {
+        return isCameraActive;
+      }
+    };
+  }
+
 })();

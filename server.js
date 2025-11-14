@@ -39,6 +39,11 @@ if (
   console.log("✅ HTTP enabled for production");
 }
 
+// 🔹 Socket.IO setup
+const io = new SocketIOServer(server, {
+  cors: { origin: "*" },
+});
+
 io.on("connection", (socket) => {
   console.log("🔌 Socket connected:", socket.id);
 
