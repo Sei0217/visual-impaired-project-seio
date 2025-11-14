@@ -39,7 +39,7 @@ if (
   console.log("✅ HTTP enabled for production");
 }
 
-// NEW CODE - Better Socket.IO configuration
+// NEW CODE
 const io = new SocketIOServer(server, {
   cors: {
     origin: process.env.ALLOWED_ORIGINS 
@@ -48,9 +48,9 @@ const io = new SocketIOServer(server, {
     methods: ["GET", "POST"],
     credentials: true
   },
-  transports: ["websocket", "polling"], // Allow both transports
-  pingTimeout: 60000, // 60 seconds
-  pingInterval: 25000, // 25 seconds
+  transports: ["websocket", "polling"],
+  pingTimeout: 60000,
+  pingInterval: 25000,
 });
 
 io.on("connection", (socket) => {
@@ -58,33 +58,28 @@ io.on("connection", (socket) => {
   console.log("   Transport:", socket.conn.transport.name);
   console.log("   User-Agent:", socket.handshake.headers["user-agent"]);
 
-  // Phone registers itself
   socket.on("registerDevice", ({ deviceId }) => {
     if (!deviceId) return;
     console.log("📱 Device registered:", deviceId);
     socket.join(`device:${deviceId}`);
-    
-    // Send confirmation back to device
     socket.emit("registered", { deviceId, socketId: socket.id });
   });
 
-  // Controller sends a command to device
   socket.on("sendCommand", ({ deviceId, command }) => {
     if (!deviceId || !command) return;
     console.log("📨 Command to", deviceId, ":", command);
-    
-    // Send to the device
     io.to(`device:${deviceId}`).emit("command", command);
-    
-    // Send acknowledgment back to controller
     socket.emit("commandSent", { deviceId, command, timestamp: Date.now() });
   });
   
-  // Device sends status update
   socket.on("deviceStatus", (status) => {
     console.log("📊 Device status:", socket.id, status);
-    // Broadcast to all controllers if needed
     socket.broadcast.emit("deviceStatus", { ...status, socketId: socket.id });
+  });
+
+  // Add this for live preview
+  socket.on("videoFrame", (data) => {
+    io.to(`device:${data.deviceId}`).emit("videoFrame", data);
   });
   
   socket.on("disconnect", (reason) => {
@@ -129,13 +124,13 @@ if (ENV === "development") {
   });
 
   // Add this with your other routes
-app.get("/diagnostic", (_, res) => {
-  res.sendFile(path.join(__dirname, "public", "diagnostic.html"));
-});
+  app.get("/diagnostic", (_, res) => {
+    res.sendFile(path.join(__dirname, "public", "diagnostic.html"));
+  });
 
-app.get("/controller", (_, res) => {
-  res.sendFile(path.join(__dirname, "public", "controller.html"));
-});
+  app.get("/controller", (_, res) => {
+    res.sendFile(path.join(__dirname, "public", "controller.html"));
+  });
  
   // ✅ Unified Upload Endpoint with auto-delete
   app.post("/api/upload", upload.single("image"), async (req, res) => {

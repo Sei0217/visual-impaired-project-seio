@@ -1,254 +1,272 @@
-// 🔹 Unique ID for this phone/device
-// Generate a persistent ID or use device-specific identifier
-const deviceId = (() => {
+// 🔹 Device ID Management
+const DEVICE_ID = (() => {
+  // Check if running in a production environment
+  const isProduction = window.location.hostname !== "localhost";
+  
+  if (isProduction) {
+    return "visual-impaired-cane-01";
+  }
+  
   let id = localStorage.getItem('deviceId');
   if (!id) {
-    id = 'vision-device-' + Math.random().toString(36).substr(2, 9);
+    id = 'dev-cane-' + Math.random().toString(36).substr(2, 9);
     localStorage.setItem('deviceId', id);
   }
   return id;
 })();
 
-console.log("[remote-device] Device ID:", deviceId);
+console.log("═══════════════════════════════════════════");
+console.log("🎓 THESIS PROJECT: Visual Impaired Cane System");
+console.log("📱 Device ID:", DEVICE_ID);
+console.log("🌐 Server:", window.location.origin);
+console.log("═══════════════════════════════════════════");
 
-// 🔹 Detect if running in WebView or browser
-const isWebView = (() => {
-  const ua = navigator.userAgent.toLowerCase();
-  return (
-    ua.indexOf('wv') > -1 || // Android WebView
-    ua.indexOf('iphone') > -1 || // iOS
-    ua.indexOf('ipad') > -1 ||
-    (window.navigator.standalone === true) || // iOS standalone
-    (window.matchMedia('(display-mode: standalone)').matches) // PWA
-  );
-})();
+function displayDeviceId() {
+  const existingBanner = document.getElementById("deviceIdBanner");
+  if (existingBanner) return;
+  
+  const banner = document.createElement("div");
+  banner.id = "deviceIdBanner";
+  banner.style.cssText = `
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-family: monospace;
+    z-index: 10000;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  `;
+  
+  banner.innerHTML = `
+    <div>
+      <strong>🎓 Device ID:</strong> 
+      <code style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; margin-left: 8px;">
+        ${DEVICE_ID}
+      </code>
+    </div>
+    <button onclick="this.parentElement.remove()" 
+            style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 12px; border-radius: 4px; cursor: pointer;">
+      ✕ Hide
+    </button>
+  `;
+  
+  document.body.appendChild(banner);
+}
 
-console.log("[remote-device] Running in WebView:", isWebView);
+// Show banner after 2 seconds (after page loads)
+setTimeout(displayDeviceId, 2000);
 
-// 🔹 Socket.IO configuration optimized for WebView
-const socketConfig = {
-  // IMPORTANT: Polling works better in WebViews
-  transports: ["polling", "websocket"], // Try polling FIRST for WebViews
+// 🔹 Connection Statistics
+const connectionStats = {
+  connectTime: null,
+  disconnectCount: 0,
+  reconnectCount: 0,
+  commandsReceived: 0,
+  commandsExecuted: 0,
+  errors: [],
+  startTime: Date.now(),
   
-  // Increase timeouts for mobile networks
-  reconnection: true,
-  reconnectionDelay: 2000,
-  reconnectionDelayMax: 10000,
-  reconnectionAttempts: Infinity, // Keep trying
-  timeout: 30000, // 30 seconds
+  getUptime() {
+    const uptimeMs = Date.now() - this.startTime;
+    const seconds = Math.floor(uptimeMs / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+  },
   
-  // Force new connection
-  forceNew: false,
-  
-  // Upgrade to websocket after initial polling connection
-  upgrade: true,
-  rememberUpgrade: true,
-  
-  // Add query params for debugging
-  query: {
-    deviceId: deviceId,
-    platform: isWebView ? 'webview' : 'browser',
-    ua: navigator.userAgent
+  getSummary() {
+    return {
+      deviceId: DEVICE_ID,
+      uptime: this.getUptime(),
+      connected: socket?.connected || false,
+      transport: socket?.io?.engine?.transport?.name || "N/A",
+      disconnectCount: this.disconnectCount,
+      reconnectCount: this.reconnectCount,
+      commandsReceived: this.commandsReceived,
+      commandsExecuted: this.commandsExecuted,
+      errorCount: this.errors.length,
+      lastError: this.errors[this.errors.length - 1] || null
+    };
   }
 };
 
-// 🔹 Connect to server
-let socket;
-let connectionAttempts = 0;
+// Expose stats for debugging
+window.getConnectionStats = () => connectionStats.getSummary();
+
+// 🔹 Socket.IO Configuration
+const socket = io({
+  transports: ["polling", "websocket"],
+  reconnection: true,
+  reconnectionDelay: 2000,
+  reconnectionDelayMax: 10000,
+  reconnectionAttempts: Infinity,
+  timeout: 30000,
+  query: {
+    deviceId: DEVICE_ID,
+    projectType: "thesis-visual-impaired-cane",
+    version: "1.0.0"
+  }
+});
+
 let isConnected = false;
 
-function initializeSocket() {
-  console.log("[remote-device] Initializing socket connection...");
-  console.log("[remote-device] Config:", socketConfig);
+// 🔹 Connection Event Handlers
+socket.on("connect", () => {
+  isConnected = true;
+  connectionStats.connectTime = Date.now();
   
-  try {
-    socket = io(socketConfig);
-    setupSocketHandlers();
-  } catch (error) {
-    console.error("[remote-device] Failed to initialize socket:", error);
-    showConnectionStatus("Failed to initialize: " + error.message, "error");
-  }
-}
+  console.log("✅ [CONNECTED] Socket ID:", socket.id);
+  console.log("📡 [TRANSPORT]", socket.io.engine.transport.name);
+  
+  // Register device
+  socket.emit("registerDevice", { deviceId: DEVICE_ID });
+  
+  showStatus("🟢 Connected to remote control", "success");
+});
 
-// 🔹 Setup all socket event handlers
-function setupSocketHandlers() {
-  // Connection successful
-  socket.on("connect", () => {
-    connectionAttempts = 0;
-    isConnected = true;
-    console.log("[remote-device] ✅ Connected:", socket.id);
-    console.log("[remote-device] Transport:", socket.io.engine.transport.name);
-    
-    // Register this device
-    socket.emit("registerDevice", { deviceId });
-    
-    showConnectionStatus("🟢 Remote control connected", "success");
+socket.on("registered", (data) => {
+  console.log("✅ [REGISTERED]", data);
+  showStatus("✓ Ready for remote control", "success");
+  
+  // Send initial status for monitoring
+  sendDeviceStatus("device_ready", {
+    capabilities: ["camera", "language_switch", "audio_feedback"],
+    batteryLevel: navigator.getBattery ? "checking..." : "N/A",
+    networkType: navigator.connection?.effectiveType || "unknown"
   });
+});
 
-  // Registration confirmed
-  socket.on("registered", (data) => {
-    console.log("[remote-device] ✅ Registered successfully:", data);
-    showConnectionStatus("✓ Registered to remote control", "success");
-    
-    // Store connection info
-    localStorage.setItem('lastConnected', new Date().toISOString());
+socket.on("disconnect", (reason) => {
+  isConnected = false;
+  connectionStats.disconnectCount++;
+  
+  console.warn("❌ [DISCONNECTED]", reason);
+  showStatus("🔴 Disconnected from control", "error");
+});
+
+socket.on("connect_error", (error) => {
+  connectionStats.errors.push({
+    time: new Date().toISOString(),
+    type: "connection_error",
+    message: error.message
   });
+  
+  console.error("⚠️ [ERROR]", error.message);
+  showStatus("Connection error", "error");
+});
 
-  // Disconnected
-  socket.on("disconnect", (reason) => {
-    isConnected = false;
-    console.warn("[remote-device] ❌ Disconnected:", reason);
-    
-    if (reason === 'io server disconnect') {
-      // Server disconnected us, reconnect manually
-      console.log("[remote-device] Server disconnected, reconnecting...");
-      socket.connect();
-    }
-    
-    showConnectionStatus("🔴 Remote control disconnected", "warning");
-  });
+socket.on("reconnect", (attemptNumber) => {
+  connectionStats.reconnectCount++;
+  console.log("🔄 [RECONNECTED] After", attemptNumber, "attempts");
+  showStatus("✓ Reconnected", "success");
+});
 
-  // Connection error
-  socket.on("connect_error", (error) => {
-    connectionAttempts++;
-    console.error("[remote-device] ⚠️ Connection error #" + connectionAttempts + ":", error.message);
-    console.error("[remote-device] Error type:", error.type);
-    console.error("[remote-device] Error description:", error.description);
-    
-    showConnectionStatus(
-      `Connection error (attempt ${connectionAttempts}): ${error.message}`, 
-      "error"
-    );
-  });
+socket.io.engine.on("upgrade", (transport) => {
+  console.log("⬆️ [UPGRADE]", transport.name);
+});
 
-  // Reconnecting
-  socket.on("reconnect_attempt", (attemptNumber) => {
-    console.log("[remote-device] 🔄 Reconnection attempt:", attemptNumber);
-    showConnectionStatus(`Reconnecting... (${attemptNumber})`, "warning");
-  });
-
-  // Reconnected successfully
-  socket.on("reconnect", (attemptNumber) => {
-    console.log("[remote-device] 🔄 Reconnected after", attemptNumber, "attempts");
-    showConnectionStatus("✓ Reconnected to remote control", "success");
-  });
-
-  // Failed to reconnect
-  socket.on("reconnect_failed", () => {
-    console.error("[remote-device] ❌ Reconnection failed");
-    showConnectionStatus("Failed to reconnect. Please refresh.", "error");
-  });
-
-  // Ping/Pong monitoring
-  socket.on("ping", () => {
-    console.log("[remote-device] 🏓 Ping from server");
-  });
-
-  socket.on("pong", (latency) => {
-    console.log("[remote-device] 🏓 Pong - Latency:", latency, "ms");
-  });
-
-  // Transport upgrade (polling -> websocket)
-  socket.io.engine.on("upgrade", (transport) => {
-    console.log("[remote-device] ⬆️ Transport upgraded to:", transport.name);
-  });
-
-  // Command received
-  socket.on("command", handleCommand);
-}
-
-// 🔹 Command handler
-function handleCommand(cmd) {
-  console.log("[remote-device] 📨 Command received:", cmd);
+// 🔹 Command Handler with Statistics
+socket.on("command", (cmd) => {
+  connectionStats.commandsReceived++;
+  
+  console.log("📨 [COMMAND]", cmd.type, cmd.payload || "");
   
   if (!cmd || !cmd.type) {
-    console.warn("[remote-device] ⚠️ Invalid command format");
+    console.warn("⚠️ Invalid command format");
     return;
   }
 
-  // Acknowledge receipt
-  socket.emit("deviceStatus", {
-    deviceId,
-    action: "command_received",
-    commandType: cmd.type,
-    timestamp: Date.now()
-  });
-
   try {
-    switch (cmd.type) {
-      case "SET_LANGUAGE":
-        if (cmd.payload?.lang) {
-          remoteSetLanguage(cmd.payload.lang);
-        } else {
-          console.warn("[remote-device] ⚠️ No language specified");
-        }
-        break;
-
-      case "START_CAMERA":
-        remoteStartCamera();
-        break;
-
-      case "STOP_CAMERA":
-        remoteStopCamera();
-        break;
-
-      case "PING":
-        // Respond to ping
-        socket.emit("deviceStatus", {
-          deviceId,
-          action: "pong",
-          connected: isConnected,
-          transport: socket?.io?.engine?.transport?.name || "unknown",
-          timestamp: Date.now()
-        });
-        break;
-
-      case "REFRESH":
-        // Reload the page
-        console.log("[remote-device] 🔄 REFRESH command");
-        window.location.reload();
-        break;
-
-      case "GET_STATUS":
-        // Send current status
-        socket.emit("deviceStatus", {
-          deviceId,
-          action: "status_report",
-          connected: isConnected,
-          transport: socket?.io?.engine?.transport?.name || "unknown",
-          userAgent: navigator.userAgent,
-          isWebView: isWebView,
-          timestamp: Date.now()
-        });
-        break;
-
-      default:
-        console.warn("[remote-device] ⚠️ Unknown command type:", cmd.type);
-    }
+    executeCommand(cmd);
+    connectionStats.commandsExecuted++;
   } catch (error) {
-    console.error("[remote-device] ❌ Error executing command:", error);
-    socket.emit("deviceStatus", {
-      deviceId,
-      action: "command_error",
-      commandType: cmd.type,
-      error: error.message,
-      timestamp: Date.now()
+    connectionStats.errors.push({
+      time: new Date().toISOString(),
+      type: "command_execution_error",
+      command: cmd.type,
+      message: error.message
+    });
+    
+    console.error("❌ [ERROR] Executing command:", error);
+    sendDeviceStatus("command_error", {
+      command: cmd.type,
+      error: error.message
     });
   }
+});
+
+// 🔹 Command Execution
+function executeCommand(cmd) {
+  const startTime = Date.now();
+  
+  switch (cmd.type) {
+    case "SET_LANGUAGE":
+      if (cmd.payload?.lang) {
+        changeLanguage(cmd.payload.lang);
+      }
+      break;
+
+    case "START_CAMERA":
+      startCamera();
+      break;
+
+    case "STOP_CAMERA":
+      stopCamera();
+      break;
+
+    case "CAPTURE_PHOTO":
+      capturePhoto();
+      break;
+
+    case "START_LIVE_PREVIEW":
+      startLivePreview();
+      break;
+
+    case "STOP_LIVE_PREVIEW":
+      stopLivePreview();
+      break;
+
+    case "PING":
+      sendDeviceStatus("pong", {
+        latency: Date.now() - (cmd.timestamp || Date.now()),
+        stats: connectionStats.getSummary()
+      });
+      break;
+
+    case "GET_STATS":
+      sendDeviceStatus("stats_report", connectionStats.getSummary());
+      break;
+
+    case "REFRESH":
+      console.log("🔄 [REFRESH] Reloading application...");
+      setTimeout(() => window.location.reload(), 500);
+      break;
+
+    default:
+      console.warn("⚠️ Unknown command:", cmd.type);
+      sendDeviceStatus("unknown_command", { commandType: cmd.type });
+  }
+  
+  const executionTime = Date.now() - startTime;
+  console.log(`⏱️ [TIMING] ${cmd.type} executed in ${executionTime}ms`);
 }
 
 // 🔹 Helper Functions
-
-// Show connection status to user
-function showConnectionStatus(message, type = "info") {
-  console.log(`[remote-device] [${type}]`, message);
+function showStatus(message, type = "info") {
+  console.log(`[STATUS] ${message}`);
   
   const statusEl = document.getElementById("remoteStatus");
   if (statusEl) {
     statusEl.textContent = message;
-    statusEl.className = `status-${type}`;
+    statusEl.className = `remote-status status-${type}`;
     
-    // Auto-hide success messages after 3 seconds
     if (type === "success") {
       setTimeout(() => {
         statusEl.textContent = "";
@@ -258,127 +276,144 @@ function showConnectionStatus(message, type = "info") {
   }
 }
 
-// Remote language change
-function remoteSetLanguage(lang) {
-  if (window.translations && window.translations[lang] && typeof window.changeLanguage === "function") {
-    console.log("[remote-device] 🌐 Changing language to:", lang);
+function sendDeviceStatus(action, data = {}) {
+  socket.emit("deviceStatus", {
+    deviceId: DEVICE_ID,
+    action: action,
+    timestamp: Date.now(),
+    ...data
+  });
+}
+
+function changeLanguage(lang) {
+  if (window.changeLanguage && typeof window.changeLanguage === "function") {
+    console.log("🌐 [LANGUAGE] Changing to:", lang);
     window.changeLanguage(lang);
-    
-    // Send confirmation
-    socket.emit("deviceStatus", {
-      deviceId,
-      action: "language_changed",
-      language: lang,
-      timestamp: Date.now()
-    });
+    showStatus(`Language: ${lang}`, "success");
+    sendDeviceStatus("language_changed", { language: lang });
   } else {
-    console.warn("[remote-device] ⚠️ Unsupported language:", lang);
+    console.warn("⚠️ changeLanguage function not found");
   }
 }
 
-// Remote camera control
-function remoteStartCamera() {
+function startCamera() {
   const btn = document.getElementById("useCameraBtn");
   if (btn) {
-    console.log("[remote-device] 📷 START_CAMERA via button click");
+    console.log("📷 [CAMERA] Starting...");
     btn.click();
-    
-    socket.emit("deviceStatus", {
-      deviceId,
-      action: "camera_started",
-      timestamp: Date.now()
-    });
+    showStatus("Camera started", "success");
+    sendDeviceStatus("camera_started");
   } else {
-    console.warn("[remote-device] ⚠️ useCameraBtn not found");
+    console.warn("⚠️ Camera button not found");
   }
 }
 
-function remoteStopCamera() {
+function stopCamera() {
   const btn = document.getElementById("stopCameraBtn");
   if (btn) {
-    console.log("[remote-device] 📷 STOP_CAMERA via button click");
+    console.log("📷 [CAMERA] Stopping...");
     btn.click();
-    
-    socket.emit("deviceStatus", {
-      deviceId,
-      action: "camera_stopped",
-      timestamp: Date.now()
-    });
+    showStatus("Camera stopped", "success");
+    sendDeviceStatus("camera_stopped");
   } else {
-    console.warn("[remote-device] ⚠️ stopCameraBtn not found");
+    console.warn("⚠️ Stop camera button not found");
   }
 }
 
-// 🔹 Expose socket and deviceId globally
-Object.defineProperty(window, 'remoteSocket', {
-  get() { return socket; }
-});
+function capturePhoto() {
+  const btn = document.getElementById("captureBtn") || document.querySelector("[data-action='capture']");
+  if (btn) {
+    console.log("📸 [CAPTURE] Taking photo...");
+    btn.click();
+    sendDeviceStatus("photo_captured");
+  }
+}
 
-window.remoteDeviceId = deviceId;
+// 🔹 Live Preview with Frame Rate Control
+let streamInterval = null;
+let framesSent = 0;
 
-// 🔹 Connection monitoring
-let connectionCheckInterval;
+function startLivePreview() {
+  const video = document.getElementById("videoElement") || document.querySelector("video");
+  if (!video) {
+    console.warn("⚠️ Video element not found");
+    return;
+  }
 
-function startConnectionMonitoring() {
-  // Check connection every 30 seconds
-  connectionCheckInterval = setInterval(() => {
-    if (socket && socket.connected) {
-      console.log("[remote-device] Connection check: OK");
-    } else {
-      console.warn("[remote-device] Connection check: DISCONNECTED");
-      if (socket && !socket.connected) {
-        console.log("[remote-device] Attempting reconnection...");
-        socket.connect();
-      }
+  console.log("📡 [PREVIEW] Starting live stream...");
+  framesSent = 0;
+  
+  // Send frames at 5 FPS (200ms interval)
+  streamInterval = setInterval(() => {
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      const canvas = document.createElement("canvas");
+      canvas.width = 320;
+      canvas.height = 240;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      const frame = canvas.toDataURL("image/jpeg", 0.6);
+      socket.emit("videoFrame", {
+        deviceId: DEVICE_ID,
+        frame: frame,
+        timestamp: Date.now(),
+        frameNumber: ++framesSent
+      });
     }
-  }, 30000);
+  }, 200);
+
+  sendDeviceStatus("live_preview_started");
 }
 
-function stopConnectionMonitoring() {
-  if (connectionCheckInterval) {
-    clearInterval(connectionCheckInterval);
+function stopLivePreview() {
+  if (streamInterval) {
+    clearInterval(streamInterval);
+    streamInterval = null;
+    console.log(`📡 [PREVIEW] Stopped. Frames sent: ${framesSent}`);
+    sendDeviceStatus("live_preview_stopped", { totalFrames: framesSent });
   }
 }
 
-// 🔹 Visibility change handler (for mobile apps going to background)
+// 🔹 Visibility Handler (for thesis - monitor app lifecycle)
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
-    console.log("[remote-device] App went to background");
-    // Don't disconnect, but stop monitoring
-    stopConnectionMonitoring();
+    console.log("📱 [LIFECYCLE] App backgrounded");
+    sendDeviceStatus("app_backgrounded");
   } else {
-    console.log("[remote-device] App came to foreground");
-    // Restart monitoring and reconnect if needed
-    startConnectionMonitoring();
-    if (socket && !socket.connected) {
-      console.log("[remote-device] Reconnecting after background...");
+    console.log("📱 [LIFECYCLE] App foregrounded");
+    sendDeviceStatus("app_foregrounded");
+    
+    // Reconnect if disconnected
+    if (!socket.connected) {
+      console.log("🔄 Reconnecting after foreground...");
       socket.connect();
     }
   }
 });
 
-// 🔹 Initialize on load
-console.log("[remote-device] Script loaded");
-console.log("[remote-device] Device ID:", deviceId);
-console.log("[remote-device] Is WebView:", isWebView);
-console.log("[remote-device] User Agent:", navigator.userAgent);
-
-// Wait for page to be fully loaded
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    initializeSocket();
-    startConnectionMonitoring();
+// 🔹 Battery Monitoring
+if (navigator.getBattery) {
+  navigator.getBattery().then(battery => {
+    console.log("🔋 [BATTERY] Level:", Math.round(battery.level * 100) + "%");
+    
+    battery.addEventListener('levelchange', () => {
+      const level = Math.round(battery.level * 100);
+      if (level <= 20) {
+        console.warn("⚠️ [BATTERY] Low battery:", level + "%");
+        sendDeviceStatus("low_battery", { level: level });
+      }
+    });
   });
-} else {
-  initializeSocket();
-  startConnectionMonitoring();
 }
 
-// 🔹 Cleanup on page unload
-window.addEventListener("beforeunload", () => {
-  console.log("[remote-device] Page unloading, cleaning up...");
-  stopConnectionMonitoring();
-  if (socket) {
-    socket.disconnect();
-  }
-});
+// 🔹 Expose API
+window.remoteControl = {
+  socket: socket,
+  deviceId: DEVICE_ID,
+  getStats: () => connectionStats.getSummary(),
+  sendTestCommand: (type, payload) => executeCommand({ type, payload }),
+  isConnected: () => isConnected
+};
+
+console.log("🎓 [INIT] Remote control system initialized");
+console.log("💡 [TIP] Use window.getConnectionStats() to view statistics");

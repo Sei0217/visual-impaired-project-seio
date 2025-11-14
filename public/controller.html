@@ -1,351 +1,443 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Remote Control</title>
-    <script src="/socket.io/socket.io.js"></script>
-    <style>
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 20px;
-        background: #f5f5f5;
-      }
-      h1 {
-        color: #333;
-        border-bottom: 3px solid #4CAF50;
-        padding-bottom: 10px;
-      }
-      .section {
-        background: white;
-        padding: 20px;
-        margin: 20px 0;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      }
-      .status {
-        padding: 10px;
-        margin: 10px 0;
-        border-radius: 4px;
-        font-weight: bold;
-      }
-      .status.connected { background: #d4edda; color: #155724; }
-      .status.disconnected { background: #f8d7da; color: #721c24; }
-      .status.connecting { background: #fff3cd; color: #856404; }
-      
-      input, select, button {
-        padding: 10px 15px;
-        font-size: 14px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        margin: 5px;
-      }
-      input {
-        width: 300px;
-      }
-      button {
-        background: #4CAF50;
-        color: white;
-        cursor: pointer;
-        border: none;
-      }
-      button:hover { background: #45a049; }
-      button:active { transform: scale(0.98); }
-      button:disabled {
-        background: #ccc;
-        cursor: not-allowed;
-      }
-      button.danger { background: #f44336; }
-      button.danger:hover { background: #da190b; }
-      
-      #log {
-        background: #1e1e1e;
-        color: #00ff00;
-        padding: 15px;
-        height: 300px;
-        overflow: auto;
-        font-size: 12px;
-        font-family: 'Courier New', monospace;
-        border-radius: 4px;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-      }
-      .control-group {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin: 10px 0;
-      }
-      .device-info {
-        background: #e3f2fd;
-        padding: 15px;
-        border-radius: 4px;
-        margin: 10px 0;
-        font-size: 14px;
-      }
-      .device-info code {
-        background: #fff;
-        padding: 2px 6px;
-        border-radius: 3px;
-        font-family: monospace;
-      }
-      .alert {
-        padding: 12px;
-        border-radius: 4px;
-        margin: 10px 0;
-      }
-      .alert-info {
-        background: #cce5ff;
-        border-left: 4px solid #004085;
-        color: #004085;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>📱 Remote Control Dashboard</h1>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cane Camera Controller</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      background: #1a1a1a;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    header {
+      background: #2a2a2a;
+      padding: 15px 20px;
+      border-bottom: 2px solid #4CAF50;
+    }
+    
+    h1 {
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #f44336;
+      animation: pulse 2s infinite;
+    }
+    
+    .status-indicator.connected {
+      background: #4CAF50;
+      animation: none;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    
+    main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    
+    .preview-section {
+      flex: 2;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+    }
+    
+    #livePreview {
+      max-width: 100%;
+      max-height: 100%;
+      border: 2px solid #333;
+      border-radius: 8px;
+      background: #1a1a1a;
+    }
+    
+    .preview-placeholder {
+      text-align: center;
+      color: #666;
+    }
+    
+    .preview-placeholder h2 {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+    
+    .controls-section {
+      flex: 1;
+      background: #2a2a2a;
+      padding: 20px;
+      overflow-y: auto;
+      min-width: 350px;
+    }
+    
+    .control-group {
+      background: #333;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+    }
+    
+    .control-group h3 {
+      font-size: 16px;
+      margin-bottom: 15px;
+      color: #4CAF50;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    button:hover { transform: translateY(-2px); }
+    button:active { transform: translateY(0); }
+    
+    .btn-primary {
+      background: #4CAF50;
+      color: white;
+    }
+    .btn-primary:hover { background: #45a049; }
+    
+    .btn-danger {
+      background: #f44336;
+      color: white;
+    }
+    .btn-danger:hover { background: #da190b; }
+    
+    .btn-secondary {
+      background: #555;
+      color: white;
+    }
+    .btn-secondary:hover { background: #666; }
+    
+    select {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      font-size: 14px;
+      border: 2px solid #555;
+      border-radius: 6px;
+      background: #1a1a1a;
+      color: white;
+      cursor: pointer;
+    }
+    
+    .status-bar {
+      background: #1a1a1a;
+      padding: 10px 20px;
+      border-top: 1px solid #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #888;
+    }
+    
+    .log-mini {
+      background: #000;
+      color: #0f0;
+      padding: 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11px;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+    
+    .connection-info {
+      display: flex;
+      gap: 20px;
+      font-size: 12px;
+      color: #888;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #444;
+    }
+    
+    .preview-controls {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+    }
+    
+    .preview-controls button {
+      width: auto;
+      padding: 10px 20px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>
+      <span class="status-indicator" id="statusIndicator"></span>
+      🦯 Cane Camera Controller
+    </h1>
+    <div class="connection-info">
+      <span>Target: <strong>cane-camera-01</strong></span>
+      <span id="connectionStatus">Connecting...</span>
+      <span id="transportInfo"></span>
+    </div>
+  </header>
 
-    <div class="section">
-      <h2>🎯 Target Device</h2>
-      <div class="alert alert-info">
-        <strong>📋 To find your device ID:</strong><br>
-        1. Open the app on your mobile device<br>
-        2. Open browser console (use remote debugging or check logs)<br>
-        3. Look for: <code>[remote-device] Device ID: vision-device-xxxxx</code><br>
-        4. Enter that ID below
+  <main>
+    <div class="preview-section">
+      <div id="previewPlaceholder" class="preview-placeholder">
+        <h2>📷</h2>
+        <p>Live preview will appear here</p>
+        <p style="margin-top: 10px; font-size: 14px;">Click "Start Live Preview" to begin</p>
       </div>
-      <div class="control-group">
-        <input 
-          type="text" 
-          id="deviceIdInput" 
-          placeholder="vision-device-xxxxx"
-          value="vision-device-1"
-        />
-        <button id="updateDeviceBtn">Update Target</button>
-      </div>
-      <div class="device-info">
-        <strong>Current Target:</strong> <code id="targetDevice">vision-device-1</code>
+      <img id="livePreview" style="display: none;" alt="Live camera feed">
+      
+      <div class="preview-controls" id="previewControls" style="display: none;">
+        <button class="btn-danger" onclick="stopLivePreview()">⏹️ Stop Preview</button>
       </div>
     </div>
 
-    <div class="section">
-      <h2>Connection Status</h2>
-      <div id="connectionStatus" class="status disconnected">Disconnected</div>
-      <div class="device-info">
-        <strong>Controller Socket:</strong> <span id="socketId">Not connected</span><br>
-        <strong>Transport:</strong> <span id="transport">-</span><br>
-        <strong>Last Device Update:</strong> <span id="lastUpdate">Never</span>
-      </div>
-      <button id="pingBtn">🏓 Ping Device</button>
-      <button id="statusBtn">📊 Get Device Status</button>
-      <button id="reconnectBtn">🔄 Reconnect</button>
-    </div>
-
-    <div class="section">
-      <h2>🌐 Language Control</h2>
+    <div class="controls-section">
       <div class="control-group">
-        <select id="lang">
+        <h3>📷 Camera Controls</h3>
+        <button class="btn-primary" onclick="startCamera()">
+          ▶️ Start Camera
+        </button>
+        <button class="btn-danger" onclick="stopCamera()">
+          ⏹️ Stop Camera
+        </button>
+        <button class="btn-secondary" onclick="capturePhoto()">
+          📸 Capture Photo
+        </button>
+      </div>
+
+      <div class="control-group">
+        <h3>📡 Live Preview</h3>
+        <button class="btn-primary" onclick="startLivePreview()">
+          📺 Start Live Preview
+        </button>
+        <p style="font-size: 12px; color: #888; margin-top: 8px;">
+          View live camera feed on this screen
+        </p>
+      </div>
+
+      <div class="control-group">
+        <h3>🌐 Language</h3>
+        <select id="languageSelect">
           <option value="en">English</option>
           <option value="tl">Tagalog</option>
           <option value="ceb">Cebuano</option>
         </select>
-        <button id="applyLangBtn">Apply Language</button>
+        <button class="btn-primary" onclick="changeLanguage()">
+          Apply Language
+        </button>
       </div>
-    </div>
 
-    <div class="section">
-      <h2>📷 Camera Control</h2>
       <div class="control-group">
-        <button id="startCamBtn">▶️ Start Camera</button>
-        <button id="stopCamBtn" class="danger">⏹️ Stop Camera</button>
+        <h3>🔧 System</h3>
+        <button class="btn-secondary" onclick="pingDevice()">
+          🏓 Ping Device
+        </button>
+        <button class="btn-secondary" onclick="refreshDevice()">
+          🔄 Refresh Device
+        </button>
       </div>
-    </div>
 
-    <div class="section">
-      <h2>🔧 Other Controls</h2>
       <div class="control-group">
-        <button id="refreshBtn">🔄 Refresh Device</button>
+        <h3>📋 Activity Log</h3>
+        <div class="log-mini" id="log"></div>
+        <button class="btn-secondary" onclick="clearLog()" style="margin-top: 8px;">
+          Clear Log
+        </button>
       </div>
     </div>
+  </main>
 
-    <div class="section">
-      <h2>📋 Activity Log</h2>
-      <button onclick="document.getElementById('log').textContent = ''">Clear Log</button>
-      <button onclick="downloadLog()">💾 Download Log</button>
-      <pre id="log"></pre>
-    </div>
+  <div class="status-bar">
+    <span id="lastActivity">No activity yet</span>
+    <span id="previewFps"></span>
+  </div>
 
-    <script>
-      let targetDeviceId = localStorage.getItem('targetDeviceId') || "vision-device-1";
-      document.getElementById("deviceIdInput").value = targetDeviceId;
-      document.getElementById("targetDevice").textContent = targetDeviceId;
+  <script>
+    const DEVICE_ID = "visual-impaired-cane-01";
+    const statusIndicator = document.getElementById("statusIndicator");
+    const connectionStatus = document.getElementById("connectionStatus");
+    const transportInfo = document.getElementById("transportInfo");
+    const logEl = document.getElementById("log");
+    const lastActivityEl = document.getElementById("lastActivity");
+    const previewImg = document.getElementById("livePreview");
+    const previewPlaceholder = document.getElementById("previewPlaceholder");
+    const previewControls = document.getElementById("previewControls");
+    const previewFpsEl = document.getElementById("previewFps");
 
-      const logEl = document.getElementById("log");
-      const statusEl = document.getElementById("connectionStatus");
-      const socketIdEl = document.getElementById("socketId");
-      const transportEl = document.getElementById("transport");
-      const lastUpdateEl = document.getElementById("lastUpdate");
+    let isLivePreviewActive = false;
+    let frameCount = 0;
+    let lastFpsUpdate = Date.now();
 
-      function log(...args) {
-        const timestamp = new Date().toLocaleTimeString();
-        const message = `[${timestamp}] ` + args.map(a => (typeof a === "string" ? a : JSON.stringify(a, null, 2))).join(" ");
-        console.log(...args);
-        logEl.textContent += message + "\n";
-        logEl.scrollTop = logEl.scrollHeight;
-      }
+    function log(message) {
+      const timestamp = new Date().toLocaleTimeString();
+      logEl.innerHTML += `[${timestamp}] ${message}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+      lastActivityEl.textContent = `Last: ${message}`;
+      console.log(message);
+    }
 
-      function downloadLog() {
-        const blob = new Blob([logEl.textContent], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `remote-control-log-${Date.now()}.txt`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
+    function clearLog() {
+      logEl.innerHTML = "";
+    }
 
-      function updateStatus(status, text) {
-        statusEl.className = `status ${status}`;
-        statusEl.textContent = text;
-      }
+    // Socket.IO connection
+    const socket = io({
+      transports: ["polling", "websocket"],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+    });
 
-      // Update target device
-      document.getElementById("updateDeviceBtn").addEventListener("click", () => {
-        const newId = document.getElementById("deviceIdInput").value.trim();
-        if (newId) {
-          targetDeviceId = newId;
-          localStorage.setItem('targetDeviceId', targetDeviceId);
-          document.getElementById("targetDevice").textContent = targetDeviceId;
-          log("🎯 Target device updated to:", targetDeviceId);
-        }
-      });
+    socket.on("connect", () => {
+      statusIndicator.classList.add("connected");
+      connectionStatus.textContent = "Connected ✓";
+      transportInfo.textContent = `Transport: ${socket.io.engine.transport.name}`;
+      log("✅ Connected to server");
+    });
 
-      // Connect with configuration optimized for mobile
-      const socket = io({
-        transports: ["polling", "websocket"], // Start with polling for better mobile compatibility
-        reconnection: true,
-        reconnectionDelay: 2000,
-        reconnectionDelayMax: 10000,
-        reconnectionAttempts: Infinity,
-        timeout: 30000,
-      });
+    socket.on("disconnect", () => {
+      statusIndicator.classList.remove("connected");
+      connectionStatus.textContent = "Disconnected";
+      transportInfo.textContent = "";
+      log("❌ Disconnected from server");
+    });
 
-      socket.on("connect", () => {
-        log("✅ [controller] connected:", socket.id);
-        updateStatus("connected", "Connected ✓");
-        socketIdEl.textContent = socket.id;
-        transportEl.textContent = socket.io.engine.transport.name;
-      });
+    socket.io.engine.on("upgrade", (transport) => {
+      transportInfo.textContent = `Transport: ${transport.name}`;
+      log(`⬆️ Upgraded to ${transport.name}`);
+    });
 
-      socket.on("disconnect", (reason) => {
-        log("❌ [controller] disconnected:", reason);
-        updateStatus("disconnected", "Disconnected: " + reason);
-        socketIdEl.textContent = "Not connected";
-        transportEl.textContent = "-";
-      });
+    // Device status updates
+    socket.on("deviceStatus", (data) => {
+      log(`📊 ${data.action}`);
+    });
 
-      socket.on("connect_error", (error) => {
-        log("⚠️ [controller] connection error:", error.message);
-        updateStatus("disconnected", "Error: " + error.message);
-      });
+    socket.on("commandSent", () => {
+      log("✓ Command sent");
+    });
 
-      socket.on("reconnecting", (attemptNumber) => {
-        log("🔄 [controller] reconnecting... attempt:", attemptNumber);
-        updateStatus("connecting", "Reconnecting... (attempt " + attemptNumber + ")");
-      });
-
-      socket.on("reconnect", (attemptNumber) => {
-        log("✅ [controller] reconnected after", attemptNumber, "attempts");
-        updateStatus("connected", "Reconnected ✓");
-      });
-
-      // Upgrade transport
-      socket.io.engine.on("upgrade", (transport) => {
-        log("⬆️ Transport upgraded to:", transport.name);
-        transportEl.textContent = transport.name;
-      });
-
-      // Helper to send commands
-      function sendCommand(type, payload = {}) {
-        if (!socket.connected) {
-          log("⚠️ Cannot send command: not connected");
-          alert("Not connected to server!");
-          return;
-        }
-
-        const msg = {
-          deviceId: targetDeviceId,
-          command: {
-            type,
-            payload,
-          },
-        };
-        socket.emit("sendCommand", msg);
-        log("📤 [controller] sendCommand:", msg);
-      }
-
-      // Listen for command confirmations
-      socket.on("commandSent", (data) => {
-        log("✅ Command sent successfully:", data);
-      });
-
-      // Listen for device status updates
-      socket.on("deviceStatus", (status) => {
-        log("📊 Device status update:", status);
-        lastUpdateEl.textContent = new Date().toLocaleTimeString();
+    // Video frame receiver
+    socket.on("videoFrame", (data) => {
+      if (isLivePreviewActive && data.frame) {
+        previewImg.src = data.frame;
         
-        // Show notification for important status updates
-        if (status.action === "pong") {
-          updateStatus("connected", "Device is alive! ✓");
-          setTimeout(() => updateStatus("connected", "Connected ✓"), 2000);
+        // Calculate FPS
+        frameCount++;
+        const now = Date.now();
+        if (now - lastFpsUpdate >= 1000) {
+          const fps = frameCount;
+          previewFpsEl.textContent = `${fps} FPS`;
+          frameCount = 0;
+          lastFpsUpdate = now;
         }
-      });
+      }
+    });
 
-      // Language control
-      document.getElementById("applyLangBtn").addEventListener("click", () => {
-        const lang = document.getElementById("lang").value;
-        sendCommand("SET_LANGUAGE", { lang });
-      });
+    // Send command helper
+    function sendCommand(type, payload = {}) {
+      if (!socket.connected) {
+        alert("Not connected to server!");
+        return;
+      }
 
-      // Camera control
-      document.getElementById("startCamBtn").addEventListener("click", () => {
-        sendCommand("START_CAMERA");
+      socket.emit("sendCommand", {
+        deviceId: DEVICE_ID,
+        command: { type, payload }
       });
+      
+      log(`📤 ${type}`);
+    }
 
-      document.getElementById("stopCamBtn").addEventListener("click", () => {
-        sendCommand("STOP_CAMERA");
-      });
+    // Control functions
+    function startCamera() {
+      sendCommand("START_CAMERA");
+    }
 
-      // Ping device
-      document.getElementById("pingBtn").addEventListener("click", () => {
-        sendCommand("PING");
-      });
+    function stopCamera() {
+      sendCommand("STOP_CAMERA");
+    }
 
-      // Get device status
-      document.getElementById("statusBtn").addEventListener("click", () => {
-        sendCommand("GET_STATUS");
-      });
+    function capturePhoto() {
+      sendCommand("CAPTURE_PHOTO");
+    }
 
-      // Refresh device
-      document.getElementById("refreshBtn").addEventListener("click", () => {
-        if (confirm("This will reload the device app. Continue?")) {
-          sendCommand("REFRESH");
-        }
-      });
+    function changeLanguage() {
+      const lang = document.getElementById("languageSelect").value;
+      sendCommand("SET_LANGUAGE", { lang });
+    }
 
-      // Manual reconnect
-      document.getElementById("reconnectBtn").addEventListener("click", () => {
-        log("🔄 Manual reconnect triggered");
-        socket.disconnect();
-        setTimeout(() => socket.connect(), 500);
-      });
+    function pingDevice() {
+      sendCommand("PING");
+    }
 
-      // Initial log
-      log("🎮 Controller initialized");
-      log("🎯 Target device:", targetDeviceId);
-      log("🌐 Server URL:", window.location.origin);
-      log("💡 Tip: Use remote debugging to see device console logs");
-    </script>
-  </body>
+    function refreshDevice() {
+      if (confirm("This will reload the device app. Continue?")) {
+        sendCommand("REFRESH");
+      }
+    }
+
+    function startLivePreview() {
+      isLivePreviewActive = true;
+      sendCommand("START_LIVE_PREVIEW");
+      
+      previewPlaceholder.style.display = "none";
+      previewImg.style.display = "block";
+      previewControls.style.display = "flex";
+      
+      log("📡 Live preview started");
+    }
+
+    function stopLivePreview() {
+      isLivePreviewActive = false;
+      sendCommand("STOP_LIVE_PREVIEW");
+      
+      previewPlaceholder.style.display = "block";
+      previewImg.style.display = "none";
+      previewControls.style.display = "none";
+      previewFpsEl.textContent = "";
+      
+      log("📡 Live preview stopped");
+    }
+
+    log("🎮 Controller initialized");
+  </script>
+</body>
 </html>
