@@ -50,15 +50,14 @@
       });
 
       // 🔹 Tumanggap ng preview frames galing sa server
-      socket.on("previewFrame", (data) => {
-        // data = { deviceId, image }
-        if (!data || data.deviceId !== targetDeviceId) return;
-
-        const img = document.getElementById("previewImage");
-        if (img && data.image) {
-          img.src = data.image; // data:image/jpeg;base64,...
-        }
-      });
+socket.on("previewFrame", (data) => {
+  if (!data || data.deviceId !== targetDeviceId) return;
+  const img = document.getElementById("previewImage");
+  if (img && data.image) {
+    img.src = data.image;
+    log("[controller] previewFrame received");
+  }
+});
 
 
       // Helper to send commands

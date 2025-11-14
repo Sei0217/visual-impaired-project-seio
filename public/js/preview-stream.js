@@ -30,7 +30,7 @@
       try {
         if (!video.videoWidth || !video.videoHeight) return;
 
-        var maxWidth = 320;
+        var maxWidth = 320; // bawasan kung mabagal
         var scale = Math.min(
           maxWidth / video.videoWidth,
           maxWidth / video.videoHeight
@@ -64,14 +64,7 @@
     }
   }
 
-  // Auto-start/stop based on camera events (ito dapat pinapadala ng camera.js mo)
-  document.addEventListener("cameraStarted", function () {
-    console.log("[preview] cameraStarted → startPreview");
-    startPreview();
-  });
-
-  document.addEventListener("cameraStopped", function () {
-    console.log("[preview] cameraStopped → stopPreview");
-    stopPreview();
-  });
+  // Gawing globally available para matawag ng remote-control.js
+  window.startPreview = startPreview;
+  window.stopPreview = stopPreview;
 })();

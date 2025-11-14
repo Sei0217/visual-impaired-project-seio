@@ -62,24 +62,35 @@ if (!deviceId) {
 
   // 2) Camera control – simulate button click
   function remoteStartCamera() {
-    const btn = document.getElementById("useCameraBtn");
-    if (btn) {
-      console.log("[remote-device] START_CAMERA via button click");
-      btn.click();
-    } else {
-      console.warn("[remote-device] useCameraBtn not found");
-    }
-  }
+  const btn = document.getElementById("useCameraBtn");
+  if (btn) {
+    console.log("[remote-device] START_CAMERA via button click");
+    btn.click();
 
-  function remoteStopCamera() {
-    const btn = document.getElementById("stopCameraBtn");
-    if (btn) {
-      console.log("[remote-device] STOP_CAMERA via button click");
-      btn.click();
-    } else {
-      console.warn("[remote-device] stopCameraBtn not found");
+    // 👉 sabay natin paandarin ang preview kung available
+    if (typeof window.startPreview === "function") {
+      window.startPreview();
     }
+  } else {
+    console.warn("[remote-device] useCameraBtn not found");
   }
+}
+
+function remoteStopCamera() {
+  const btn = document.getElementById("stopCameraBtn");
+  if (btn) {
+    console.log("[remote-device] STOP_CAMERA via button click");
+    btn.click();
+
+    // 👉 sabay natin patigilin ang preview kung available
+    if (typeof window.stopPreview === "function") {
+      window.stopPreview();
+    }
+  } else {
+    console.warn("[remote-device] stopCameraBtn not found");
+  }
+}
+
 
   // --- Main command handler ---
 
