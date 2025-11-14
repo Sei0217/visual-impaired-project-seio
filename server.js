@@ -39,11 +39,6 @@ if (
   console.log("✅ HTTP enabled for production");
 }
 
-// 🔹 Socket.IO setup
-const io = new SocketIOServer(server, {
-  cors: { origin: "*" },
-});
-
 io.on("connection", (socket) => {
   console.log("🔌 Socket connected:", socket.id);
 
@@ -59,10 +54,18 @@ io.on("connection", (socket) => {
     io.to(`device:${deviceId}`).emit("command", command);
   });
 
+  // 🔹 Realtime preview: phone → controller(s)
+  socket.on("previewFrame", (data) => {
+    // { deviceId, image }
+    // ipadala sa ibang kliyente (hindi na sa sender)
+    socket.broadcast.emit("previewFrame", data);
+  });
+
   socket.on("disconnect", () => {
     console.log("❌ Socket disconnected:", socket.id);
   });
 });
+
 
 
 // Middlewares
