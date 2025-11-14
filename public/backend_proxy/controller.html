@@ -2,47 +2,278 @@
 <html>
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Remote Control</title>
     <script src="/socket.io/socket.io.js"></script>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      h1 {
+        color: #333;
+        border-bottom: 3px solid #4CAF50;
+        padding-bottom: 10px;
+      }
+      .section {
+        background: white;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+      .status.connected { background: #d4edda; color: #155724; }
+      .status.disconnected { background: #f8d7da; color: #721c24; }
+      .status.connecting { background: #fff3cd; color: #856404; }
+      
+      input, select, button {
+        padding: 10px 15px;
+        font-size: 14px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin: 5px;
+      }
+      input {
+        width: 300px;
+      }
+      button {
+        background: #4CAF50;
+        color: white;
+        cursor: pointer;
+        border: none;
+      }
+      button:hover { background: #45a049; }
+      button:active { transform: scale(0.98); }
+      button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+      button.danger { background: #f44336; }
+      button.danger:hover { background: #da190b; }
+      
+      #log {
+        background: #1e1e1e;
+        color: #00ff00;
+        padding: 15px;
+        height: 300px;
+        overflow: auto;
+        font-size: 12px;
+        font-family: 'Courier New', monospace;
+        border-radius: 4px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .control-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 10px 0;
+      }
+      .device-info {
+        background: #e3f2fd;
+        padding: 15px;
+        border-radius: 4px;
+        margin: 10px 0;
+        font-size: 14px;
+      }
+      .device-info code {
+        background: #fff;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: monospace;
+      }
+      .alert {
+        padding: 12px;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+      .alert-info {
+        background: #cce5ff;
+        border-left: 4px solid #004085;
+        color: #004085;
+      }
+    </style>
   </head>
   <body>
-    <h1>Remote Control</h1>
+    <h1>📱 Remote Control Dashboard</h1>
 
-    <h2>Language</h2>
-    <select id="lang">
-      <option value="en">English</option>
-      <option value="tl">Tagalog</option>
-      <option value="ceb">Cebuano</option>
-    </select>
-    <button id="applyLangBtn">Apply Language</button>
+    <div class="section">
+      <h2>🎯 Target Device</h2>
+      <div class="alert alert-info">
+        <strong>📋 To find your device ID:</strong><br>
+        1. Open the app on your mobile device<br>
+        2. Open browser console (use remote debugging or check logs)<br>
+        3. Look for: <code>[remote-device] Device ID: vision-device-xxxxx</code><br>
+        4. Enter that ID below
+      </div>
+      <div class="control-group">
+        <input 
+          type="text" 
+          id="deviceIdInput" 
+          placeholder="vision-device-xxxxx"
+          value="vision-device-1"
+        />
+        <button id="updateDeviceBtn">Update Target</button>
+      </div>
+      <div class="device-info">
+        <strong>Current Target:</strong> <code id="targetDevice">vision-device-1</code>
+      </div>
+    </div>
 
-    <h2>Camera</h2>
-    <button id="startCamBtn">Start Camera</button>
-    <button id="stopCamBtn">Stop Camera</button>
+    <div class="section">
+      <h2>Connection Status</h2>
+      <div id="connectionStatus" class="status disconnected">Disconnected</div>
+      <div class="device-info">
+        <strong>Controller Socket:</strong> <span id="socketId">Not connected</span><br>
+        <strong>Transport:</strong> <span id="transport">-</span><br>
+        <strong>Last Device Update:</strong> <span id="lastUpdate">Never</span>
+      </div>
+      <button id="pingBtn">🏓 Ping Device</button>
+      <button id="statusBtn">📊 Get Device Status</button>
+      <button id="reconnectBtn">🔄 Reconnect</button>
+    </div>
 
-    <hr />
-    <pre id="log" style="background:#111;color:#0f0;padding:8px;height:150px;overflow:auto;font-size:12px;"></pre>
+    <div class="section">
+      <h2>🌐 Language Control</h2>
+      <div class="control-group">
+        <select id="lang">
+          <option value="en">English</option>
+          <option value="tl">Tagalog</option>
+          <option value="ceb">Cebuano</option>
+        </select>
+        <button id="applyLangBtn">Apply Language</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>📷 Camera Control</h2>
+      <div class="control-group">
+        <button id="startCamBtn">▶️ Start Camera</button>
+        <button id="stopCamBtn" class="danger">⏹️ Stop Camera</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🔧 Other Controls</h2>
+      <div class="control-group">
+        <button id="refreshBtn">🔄 Refresh Device</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>📋 Activity Log</h2>
+      <button onclick="document.getElementById('log').textContent = ''">Clear Log</button>
+      <button onclick="downloadLog()">💾 Download Log</button>
+      <pre id="log"></pre>
+    </div>
 
     <script>
-      const targetDeviceId = "vision-device-1";
+      let targetDeviceId = localStorage.getItem('targetDeviceId') || "vision-device-1";
+      document.getElementById("deviceIdInput").value = targetDeviceId;
+      document.getElementById("targetDevice").textContent = targetDeviceId;
 
       const logEl = document.getElementById("log");
+      const statusEl = document.getElementById("connectionStatus");
+      const socketIdEl = document.getElementById("socketId");
+      const transportEl = document.getElementById("transport");
+      const lastUpdateEl = document.getElementById("lastUpdate");
+
       function log(...args) {
+        const timestamp = new Date().toLocaleTimeString();
+        const message = `[${timestamp}] ` + args.map(a => (typeof a === "string" ? a : JSON.stringify(a, null, 2))).join(" ");
         console.log(...args);
-        logEl.textContent += args.map(a => (typeof a === "string" ? a : JSON.stringify(a))).join(" ") + "\n";
+        logEl.textContent += message + "\n";
         logEl.scrollTop = logEl.scrollHeight;
       }
 
+      function downloadLog() {
+        const blob = new Blob([logEl.textContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `remote-control-log-${Date.now()}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function updateStatus(status, text) {
+        statusEl.className = `status ${status}`;
+        statusEl.textContent = text;
+      }
+
+      // Update target device
+      document.getElementById("updateDeviceBtn").addEventListener("click", () => {
+        const newId = document.getElementById("deviceIdInput").value.trim();
+        if (newId) {
+          targetDeviceId = newId;
+          localStorage.setItem('targetDeviceId', targetDeviceId);
+          document.getElementById("targetDevice").textContent = targetDeviceId;
+          log("🎯 Target device updated to:", targetDeviceId);
+        }
+      });
+
+      // Connect with configuration optimized for mobile
       const socket = io({
-        transports: ["websocket"],
+        transports: ["polling", "websocket"], // Start with polling for better mobile compatibility
+        reconnection: true,
+        reconnectionDelay: 2000,
+        reconnectionDelayMax: 10000,
+        reconnectionAttempts: Infinity,
+        timeout: 30000,
       });
 
       socket.on("connect", () => {
-        log("[controller] connected:", socket.id);
+        log("✅ [controller] connected:", socket.id);
+        updateStatus("connected", "Connected ✓");
+        socketIdEl.textContent = socket.id;
+        transportEl.textContent = socket.io.engine.transport.name;
+      });
+
+      socket.on("disconnect", (reason) => {
+        log("❌ [controller] disconnected:", reason);
+        updateStatus("disconnected", "Disconnected: " + reason);
+        socketIdEl.textContent = "Not connected";
+        transportEl.textContent = "-";
+      });
+
+      socket.on("connect_error", (error) => {
+        log("⚠️ [controller] connection error:", error.message);
+        updateStatus("disconnected", "Error: " + error.message);
+      });
+
+      socket.on("reconnecting", (attemptNumber) => {
+        log("🔄 [controller] reconnecting... attempt:", attemptNumber);
+        updateStatus("connecting", "Reconnecting... (attempt " + attemptNumber + ")");
+      });
+
+      socket.on("reconnect", (attemptNumber) => {
+        log("✅ [controller] reconnected after", attemptNumber, "attempts");
+        updateStatus("connected", "Reconnected ✓");
+      });
+
+      // Upgrade transport
+      socket.io.engine.on("upgrade", (transport) => {
+        log("⬆️ Transport upgraded to:", transport.name);
+        transportEl.textContent = transport.name;
       });
 
       // Helper to send commands
       function sendCommand(type, payload = {}) {
+        if (!socket.connected) {
+          log("⚠️ Cannot send command: not connected");
+          alert("Not connected to server!");
+          return;
+        }
+
         const msg = {
           deviceId: targetDeviceId,
           command: {
@@ -51,8 +282,25 @@
           },
         };
         socket.emit("sendCommand", msg);
-        log("[controller] sendCommand:", msg);
+        log("📤 [controller] sendCommand:", msg);
       }
+
+      // Listen for command confirmations
+      socket.on("commandSent", (data) => {
+        log("✅ Command sent successfully:", data);
+      });
+
+      // Listen for device status updates
+      socket.on("deviceStatus", (status) => {
+        log("📊 Device status update:", status);
+        lastUpdateEl.textContent = new Date().toLocaleTimeString();
+        
+        // Show notification for important status updates
+        if (status.action === "pong") {
+          updateStatus("connected", "Device is alive! ✓");
+          setTimeout(() => updateStatus("connected", "Connected ✓"), 2000);
+        }
+      });
 
       // Language control
       document.getElementById("applyLangBtn").addEventListener("click", () => {
@@ -69,10 +317,35 @@
         sendCommand("STOP_CAMERA");
       });
 
-      // (optional) Just log any command echo back if you add that later
-      socket.on("command", (cmd) => {
-        log("[controller] command event:", cmd);
+      // Ping device
+      document.getElementById("pingBtn").addEventListener("click", () => {
+        sendCommand("PING");
       });
+
+      // Get device status
+      document.getElementById("statusBtn").addEventListener("click", () => {
+        sendCommand("GET_STATUS");
+      });
+
+      // Refresh device
+      document.getElementById("refreshBtn").addEventListener("click", () => {
+        if (confirm("This will reload the device app. Continue?")) {
+          sendCommand("REFRESH");
+        }
+      });
+
+      // Manual reconnect
+      document.getElementById("reconnectBtn").addEventListener("click", () => {
+        log("🔄 Manual reconnect triggered");
+        socket.disconnect();
+        setTimeout(() => socket.connect(), 500);
+      });
+
+      // Initial log
+      log("🎮 Controller initialized");
+      log("🎯 Target device:", targetDeviceId);
+      log("🌐 Server URL:", window.location.origin);
+      log("💡 Tip: Use remote debugging to see device console logs");
     </script>
   </body>
 </html>
