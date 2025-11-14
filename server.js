@@ -39,25 +39,20 @@ if (
   console.log("✅ HTTP enabled for production");
 }
 
-// 🔹 Socket.IO setup (same server, same URL as your website)
+// 🔹 Socket.IO setup
 const io = new SocketIOServer(server, {
-  cors: {
-    origin: "*",   // or restrict to your domain if you want
-  },
+  cors: { origin: "*" },
 });
 
-// Rooms & events for remote control
 io.on("connection", (socket) => {
   console.log("🔌 Socket connected:", socket.id);
 
-  // Phone registers itself with a deviceId
   socket.on("registerDevice", ({ deviceId }) => {
     if (!deviceId) return;
     console.log("📱 Device registered:", deviceId);
     socket.join(`device:${deviceId}`);
   });
 
-  // Controller sends a command to a device
   socket.on("sendCommand", ({ deviceId, command }) => {
     if (!deviceId || !command) return;
     console.log("📨 Command to", deviceId, command);
@@ -68,6 +63,7 @@ io.on("connection", (socket) => {
     console.log("❌ Socket disconnected:", socket.id);
   });
 });
+
 
 // Middlewares
 app.use(cors());

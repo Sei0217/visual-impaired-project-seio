@@ -15,26 +15,28 @@
       <option value="ceb">Cebuano</option>
     </select>
     <button id="applyBtn">Apply</button>
+    
+    <script src="/socket.io/socket.io.js"></script>
+<script>
+  const deviceId = "vision-device-1";
+  const socket = io({ transports: ["websocket"] });
 
-    <script>
-      const deviceId = "vision-device-1";
-      const socket = io({ transports: ["websocket"] });
+  socket.on("connect", () => {
+    console.log("[controller] connected:", socket.id);
+  });
 
-      socket.on("connect", () => {
-        console.log("[controller] connected:", socket.id);
-      });
+  document.getElementById("applyBtn").addEventListener("click", () => {
+    const lang = document.getElementById("lang").value;
+    socket.emit("sendCommand", {
+      deviceId,
+      command: {
+        type: "SET_LANGUAGE",
+        payload: { lang },
+      },
+    });
+    console.log("[controller] sent", lang);
+  });
+</script>
 
-      document.getElementById("applyBtn").addEventListener("click", () => {
-        const lang = document.getElementById("lang").value;
-        socket.emit("sendCommand", {
-          deviceId,
-          command: {
-            type: "SET_LANGUAGE",
-            payload: { lang },
-          },
-        });
-        console.log("[controller] sent SET_LANGUAGE:", lang);
-      });
-    </script>
   </body>
 </html>
