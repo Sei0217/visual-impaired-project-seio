@@ -38,7 +38,37 @@ if (
   server = http.createServer(app);
   console.log("✅ HTTP enabled for production");
 }
- 
+
+// 🔹 Socket.IO setup (same server, same URL as your website)
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: "*",   // or restrict to your domain if you want
+  },
+});
+
+// Rooms & events for remote control
+io.on("connection", (socket) => {
+  console.log("🔌 Socket connected:", socket.id);
+
+  // Phone registers itself with a deviceId
+  socket.on("registerDevice", ({ deviceId }) => {
+    if (!deviceId) return;
+    console.log("📱 Device registered:", deviceId);
+    socket.join(`device:${deviceId}`);
+  });
+
+  // Controller sends a command to a device
+  socket.on("sendCommand", ({ deviceId, command }) => {
+    if (!deviceId || !command) return;
+    console.log("📨 Command to", deviceId, command);
+    io.to(`device:${deviceId}`).emit("command", command);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("❌ Socket disconnected:", socket.id);
+  });
+});
+
 // Middlewares
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
