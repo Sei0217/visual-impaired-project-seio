@@ -1,13 +1,10 @@
-// 🔹 1) Check query param: ?device=1
-const params = new URLSearchParams(window.location.search);
-const isDeviceParam = params.get("device") === "1";
 
 // 🔹 2) Check if Android
-const ua = navigator.userAgent || navigator.vendor || window.opera;
+const ua = navigator.userAgent || window.opera;
 const isAndroid = /Android/i.test(ua);
 
 // 🔹 3) Only treat this as a "device" if BOTH are true
-const isDeviceMode = isDeviceParam && isAndroid;
+const isDeviceMode =  isAndroid;
 
 if (!isDeviceMode) {
   console.log("[remote-device] Not in Android device mode, skipping Socket.IO setup");
