@@ -20,6 +20,14 @@
     <button id="startCamBtn">Start Camera</button>
     <button id="stopCamBtn">Stop Camera</button>
 
+    <h2>Live Preview (slow)</h2>
+    <img
+      id="previewImage"
+      alt="Camera preview"
+      style="max-width: 100%; border: 1px solid #ccc;"
+    >
+
+
     <hr />
     <pre id="log" style="background:#111;color:#0f0;padding:8px;height:150px;overflow:auto;font-size:12px;"></pre>
 
@@ -40,6 +48,18 @@
       socket.on("connect", () => {
         log("[controller] connected:", socket.id);
       });
+
+      // 🔹 Tumanggap ng preview frames galing sa server
+      socket.on("previewFrame", (data) => {
+        // data = { deviceId, image }
+        if (!data || data.deviceId !== targetDeviceId) return;
+
+        const img = document.getElementById("previewImage");
+        if (img && data.image) {
+          img.src = data.image; // data:image/jpeg;base64,...
+        }
+      });
+
 
       // Helper to send commands
       function sendCommand(type, payload = {}) {
@@ -73,6 +93,8 @@
       socket.on("command", (cmd) => {
         log("[controller] command event:", cmd);
       });
+
+
     </script>
   </body>
 </html>

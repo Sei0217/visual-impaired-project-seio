@@ -56,6 +56,16 @@ io.on("connection", (socket) => {
     socket.join(`device:${deviceId}`);
   });
 
+    // 🔹 Preview frames: phone → controllers
+  socket.on("previewFrame", (data) => {
+    const { deviceId, image } = data || {};
+    if (!deviceId || !image) return;
+
+    // ipadala sa ibang clients (controllers), huwag sa sender
+    socket.broadcast.emit("previewFrame", { deviceId, image });
+  });
+
+
   // Controller sends a command to device
   socket.on("sendCommand", ({ deviceId, command }) => {
     if (!deviceId || !command) return;
