@@ -5,12 +5,16 @@ from fastapi import Response
 from fastapi.responses import StreamingResponse, JSONResponse
 from ultralytics import YOLO
 from gtts import gTTS
+from roboflow import Roboflow
 import numpy as np
 import cv2
 import base64
 import os
 import io
 import traceback
+
+
+rf = Roboflow(api_key="MvAPSE6lMWD1bxEBRpJZ")
 
 # ----------------------------
 # App & CORS
