@@ -62,17 +62,7 @@ io.on("connection", (socket) => {
     console.log("📨 Command to", deviceId, command);
     io.to(`device:${deviceId}`).emit("command", command);
   });
-
-    // 🔹 Preview frames from device → broadcast to others (controllers)
-  socket.on("previewFrame", (data) => {
-    const { deviceId, image } = data || {};
-    if (!deviceId || !image) return;
-
-    // ipadala sa lahat maliban sa sender (usually controllers)
-    socket.broadcast.emit("previewFrame", { deviceId, image });
-  });
-
-
+  
   socket.on("disconnect", () => {
     console.log("❌ Socket disconnected:", socket.id);
   });
