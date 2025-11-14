@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Language & Camera Controller</title>
+    <title>Remote Control</title>
     <script src="/socket.io/socket.io.js"></script>
   </head>
   <body>
@@ -20,57 +20,58 @@
     <button id="startCamBtn">Start Camera</button>
     <button id="stopCamBtn">Stop Camera</button>
 
-    <h2>Live Preview (slow)</h2>
-    <img
-      id="previewImage"
-      alt="Camera preview"
-      style="max-width: 100%; border: 1px solid #ccc;"
-    />
+    <hr />
+    <pre id="log" style="background:#111;color:#0f0;padding:8px;height:150px;overflow:auto;font-size:12px;"></pre>
 
     <script>
       const targetDeviceId = "vision-device-1";
 
-      const socket = io({ transports: ["websocket"] });
+      const logEl = document.getElementById("log");
+      function log(...args) {
+        console.log(...args);
+        logEl.textContent += args.map(a => (typeof a === "string" ? a : JSON.stringify(a))).join(" ") + "\n";
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      const socket = io({
+        transports: ["websocket"],
+      });
 
       socket.on("connect", () => {
-        console.log("[controller] connected:", socket.id);
+        log("[controller] connected:", socket.id);
       });
+
+      // Helper to send commands
+      function sendCommand(type, payload = {}) {
+        const msg = {
+          deviceId: targetDeviceId,
+          command: {
+            type,
+            payload,
+          },
+        };
+        socket.emit("sendCommand", msg);
+        log("[controller] sendCommand:", msg);
+      }
 
       // Language control
       document.getElementById("applyLangBtn").addEventListener("click", () => {
         const lang = document.getElementById("lang").value;
-        socket.emit("sendCommand", {
-          deviceId: targetDeviceId,
-          command: {
-            type: "SET_LANGUAGE",
-            payload: { lang },
-          },
-        });
-        console.log("[controller] SET_LANGUAGE", lang);
+        sendCommand("SET_LANGUAGE", { lang });
       });
 
       // Camera control
       document.getElementById("startCamBtn").addEventListener("click", () => {
-        socket.emit("sendCommand", {
-          deviceId: targetDeviceId,
-          command: { type: "START_CAMERA" },
-        });
-        console.log("[controller] START_CAMERA");
+        sendCommand("START_CAMERA");
       });
 
       document.getElementById("stopCamBtn").addEventListener("click", () => {
-        socket.emit("sendCommand", {
-          deviceId: targetDeviceId,
-          command: { type: "STOP_CAMERA" },
-        });
-        console.log("[controller] STOP_CAMERA");
+        sendCommand("STOP_CAMERA");
       });
 
-      // Receive preview frames
-      socket.on("previewFrame", (data) => {
-        if (data.deviceId && data.deviceId !== targetDeviceId) return;
-        const img = document.getElementById("previewImage");
-        img.src = data.image; // data:image/jpeg;base64,...
+      // (optional) Just log any command echo back if you add that later
+      socket.on("command", (cmd) => {
+        log("[controller] command event:", cmd);
       });
     </script>
   </body>
