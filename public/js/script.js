@@ -434,29 +434,56 @@
     }
   }
 
+    // Current language used by the object-detection audio
+  let detectionLanguage = 'en';
+
+  function normalizeLanguageCode(lang) {
+    if (!lang) return 'en';
+    lang = String(lang).toLowerCase().trim();
+
+    // Handle the codes you’re actually using: EN, TL, CEB, etc.
+    if (lang === 'en' || lang === 'english' || lang.startsWith('en-')) {
+      return 'en';
+    }
+
+    // Tagalog: EN/TL/TA/TAGALOG/FIL…
+    if (
+      lang === 'ta' ||
+      lang === 'tl' ||
+      lang === 'tagalog' ||
+      lang.startsWith('tl') ||
+      lang.startsWith('fil')
+    ) {
+      return 'ta'; // use /audio/ta/...
+    }
+
+    // Cebuano: CE/CEB/CEBU/CEBUANO…
+    if (
+      lang === 'ce' ||
+      lang === 'ceb' ||
+      lang === 'cebu' ||
+      lang === 'cebuano' ||
+      lang.startsWith('ceb')
+    ) {
+      return 'ce'; // use /audio/ce/...
+    }
+
+    // Default
+    return 'en';
+  }
+
+  function setDetectionLanguage(lang) {
+    detectionLanguage = normalizeLanguageCode(lang);
+    console.log('Detection language set to:', detectionLanguage);
+  }
+
   // ========================================
   // TEXT-TO-SPEECH
   // ========================================
 
   // Helper: detect current UI language
   function getCurrentLanguageCode() {
-    // Try a few common globals your app might set
-    let lang =
-      window.currentLanguage ||
-      window.appLanguage ||
-      window.currentLang ||
-      document.documentElement.lang ||
-      'en';
-
-    lang = String(lang).toLowerCase();
-
-    if (lang.startsWith('tl') || lang.startsWith('fil') || lang === 'tagalog') {
-      return 'tl'; // Tagalog / Filipino
-    }
-    if (lang.startsWith('ceb') || lang === 'cebuano') {
-      return 'ceb'; // Cebuano
-    }
-    return 'en';
+    return detectionLanguage;
   }
 
   // Helper: pick an appropriate voice for the language
@@ -608,7 +635,9 @@
   window.objectDetection = {
     start: startDetection,
     stop: stopDetection,
-    isActive: () => isDetecting
+    isActive: () => isDetecting,
+    setLanguage: setDetectionLanguage   // 👈 new
   };
+
 
 })();
