@@ -1,16 +1,9 @@
 services:
-
-  # Node.js Frontend Service
   - type: web
-    name: object-detection-frontend
-    runtime: node
-    buildCommand: "npm install"
-    startCommand: "node server.cjs" 
+    name: express-web-app
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
     envVars:
-      - key: ML_SERVICE_URL
-        fromService:
-          type: web
-          name: object-detection-ml
-          property: host
-    plan: free
-    
+      - key: NODE_VERSION
+        value: 18.20.8
