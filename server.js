@@ -7,6 +7,7 @@ import multer from "multer";
 import cors from "cors";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import { Server as SocketIOServer } from "socket.io"; 
 
 dotenv.config();
  
